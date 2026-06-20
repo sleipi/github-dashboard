@@ -81,9 +81,18 @@ export function renderCard(vm: CardViewModel): string {
   const safeOwner = escapeHtml(vm.owner)
   const safeName = escapeHtml(vm.name)
   const safeFullName = escapeHtml(vm.fullName)
+  const loadingId = `ld-${vm.fullName.replace(/[^a-z0-9]/gi, '-')}`
   return `
 <div class="card" draggable="true" data-card-name="${safeFullName}"
-     style="border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
+     style="position:relative;border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
+  <div id="${loadingId}" class="htmx-indicator"
+       style="position:absolute;inset:0;background:rgba(22,27,34,0.88);z-index:10;
+              padding:14px;border-radius:8px;display:flex;flex-direction:column;gap:10px;
+              justify-content:center">
+    <div class="skeleton" style="height:10px;border-radius:3px"></div>
+    <div class="skeleton" style="height:10px;width:75%;border-radius:3px"></div>
+    <div class="skeleton" style="height:10px;width:55%;border-radius:3px"></div>
+  </div>
   <div class="card-header">
     <div style="flex:1;min-width:0;overflow:hidden">
       <a href="${vm.repoUrl}" target="_blank" rel="noopener noreferrer"
@@ -95,6 +104,8 @@ export function renderCard(vm: CardViewModel): string {
     ${vm.showCiDot ? `<div class="ci-dot" style="background:${vm.ciDotColor}" title="${vm.ciDotLabel}"></div>` : ''}
     <button hx-get="/api/card/${safeOwner}/${safeName}"
             hx-target="closest .card" hx-swap="outerHTML"
+            hx-indicator="#${loadingId}"
+            class="refresh-btn"
             style="background:transparent;border:none;padding:3px;color:#6e7681;cursor:pointer"
             title="Neu laden">↻</button>
     <button hx-post="/api/cards/${safeOwner}/${safeName}"
@@ -135,6 +146,7 @@ export function renderCard(vm: CardViewModel): string {
           <span style="font-size:10px;color:#6e7681;font-family:monospace">#${pr.number}</span>
           <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escapeHtml(pr.title)}</span>
           ${pr.draft ? '<span class="badge">Draft</span>' : ''}
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="#6e7681" style="flex-shrink:0"><path d="M10.604 1h4.146a.25.25 0 01.25.25v4.146a.25.25 0 01-.427.177L13.03 4.03 9.28 7.78a.75.75 0 01-1.06-1.06l3.75-3.75-1.543-1.543A.25.25 0 0110.604 1zM3.75 2A1.75 1.75 0 002 3.75v8.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0014 12.25v-3.5a.75.75 0 00-1.5 0v3.5a.25.25 0 01-.25.25h-8.5a.25.25 0 01-.25-.25v-8.5a.25.25 0 01.25-.25h3.5a.75.75 0 000-1.5h-3.5z"/></svg>
         </a>`,
           )
           .join('')}
@@ -154,6 +166,25 @@ export function renderCard(vm: CardViewModel): string {
           : `
       <div style="font-size:12px;color:#8b949e;padding:5px">✓ Keine offenen PRs</div>`
       }
+    </div>
+  </div>
+</div>`
+}
+
+export function renderCardError(fullName: string, message: string): string {
+  return `
+<div class="card" style="border-color:#f85149">
+  <div class="card-header">
+    <div style="flex:1;min-width:0;overflow:hidden">
+      <span style="font-size:13px;font-weight:600">${escapeHtml(fullName)}</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div style="display:flex;align-items:center;gap:8px;color:#f85149;font-size:12px;padding:4px 0">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM0 8a8 8 0 1116 0A8 8 0 010 8zm8-3.5a.5.5 0 01.5.5v3a.5.5 0 01-1 0V5a.5.5 0 01.5-.5zM7.5 11a.75.75 0 111.5 0 .75.75 0 01-1.5 0z"/>
+      </svg>
+      <span>${escapeHtml(message)}</span>
     </div>
   </div>
 </div>`

@@ -1,6 +1,11 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
 import type { CardService } from '../services/card-service.ts'
-import { renderCard, renderCards, toCardViewModel } from '../templates/card-template.ts'
+import {
+  renderCard,
+  renderCardError,
+  renderCards,
+  toCardViewModel,
+} from '../templates/card-template.ts'
 import { renderDashboard } from '../templates/page-template.ts'
 import { html, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
@@ -15,7 +20,7 @@ export function createCardRoutes(cardService: CardService, authRepo: AuthRepo): 
         if (!token) return redirect('/')
         const cards = await cardService.getCards()
         const vms = cards.map(toCardViewModel)
-        return html(renderDashboard(renderCards(vms), token.username))
+        return html(renderDashboard(renderCards(vms), token.username, token.avatarUrl))
       },
     },
     // GET /api/cards — HTMX Partial für alle Cards
@@ -32,8 +37,13 @@ export function createCardRoutes(cardService: CardService, authRepo: AuthRepo): 
       async handle(_req, url) {
         const [, , , owner, repo] = url.pathname.split('/')
         const fullName = `${owner}/${repo}`
-        const data = await cardService.getCard(fullName)
-        return html(renderCard(toCardViewModel(data)))
+        try {
+          const data = await cardService.getCard(fullName)
+          return html(renderCard(toCardViewModel(data)))
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Fehler beim Laden'
+          return html(renderCardError(fullName, msg))
+        }
       },
     },
     // POST /api/cards/:owner/:repo — Pin/Unpin toggle

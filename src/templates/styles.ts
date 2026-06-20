@@ -32,4 +32,10 @@ export const DASHBOARD_CSS = `
   .btn-ghost { background: transparent; border: 1px solid #30363d; border-radius: 6px;
     padding: 5px 12px; color: #8b949e; font-size: 12px; cursor: pointer; }
   .btn-ghost:hover { background: #21262d; color: #e6edf3; }
+  .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+  .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
+  .refresh-btn { display: inline-block; }
+  .refresh-btn.htmx-request { animation: spin 1s linear infinite; }
+  .repo-add-btn.htmx-request { opacity: 0.7; pointer-events: none; }
+  .repo-add-btn.htmx-request::after { content: ' …'; }
 `
