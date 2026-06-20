@@ -4,73 +4,105 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A standalone GitHub Dashboard single-page app built with the **DC (Design Component)** framework — a React-based component runtime bundled into `support.js`. The entire application lives in `GitHub Dashboard.dc.html`.
+A local GitHub Dashboard — open-source, runs as a Bun HTTP server, shows GitHub repositories with PRs, CI status and Dependabot alerts. Auth and data are persisted in SQLite.
 
-## Files
-
-- **`GitHub Dashboard.dc.html`** — The application: template + component logic in one file. Do not rename; the `.dc.html` extension is meaningful to the DC runtime.
-- **`support.js`** — The DC runtime bundle. Header says: *"GENERATED from dc-runtime/src/*.ts — do not edit. Rebuild with `cd dc-runtime && bun run build`."* Do not hand-edit this file.
-- **`uploads/`** — Static screenshot/thumbnail images.
-
-## DC Framework Conventions
-
-The `.dc.html` file has two parts inside `<body>`:
-
-**Template** (`<x-dc>` block) — HTML using DC-specific elements:
-- `<sc-if value="{{ expr }}">` — conditional render; `hint-placeholder-val` sets the fallback shown while streaming
-- `<sc-for list="{{ expr }}" as="item">` — list render; `hint-placeholder-count` sets placeholder count
-- `{{ expr }}` — interpolation; supports dot paths, `!`, `===`, `!==`
-- `style-hover="..."`, `style-focus="..."` — pseudo-class styles (compiled to injected CSS classes)
-- `<helmet>` — injects children into `<head>`
-
-**Logic** (`<script type="text/x-dc" data-dc-script data-props="...">`) — a class extending `DCLogic`:
-- `state = {...}` — component state
-- `setState(patch, cb?)` — triggers re-render (same API as React)
-- `componentDidMount()` / `componentWillUnmount()` / `componentDidUpdate(prevProps)` — lifecycle hooks
-- `renderVals()` — **key method**: returns a flat object that the template renders against. All template bindings (`{{ x }}`) resolve against this object, not raw state. The current pattern merges props into state-derived values for the return.
-- `this.props` — the configurable props declared in `data-props` JSON on the script tag
-
-**Props schema** (in `data-props` attribute on the script tag):
-```json
-{
-  "$preview": {"width": 1400, "height": 900},
-  "refreshInterval": {"editor": "int", "default": 10, "min": 5, "max": 120, "step": 5, "tsType": "number"},
-  "maxPRs":          {"editor": "int", "default": 6,  "min": 1, "max": 15,  "step": 1, "tsType": "number"},
-  "columns":         {"editor": "enum", "options": ["2","3"], "default": "3", "tsType": "\"2\" | \"3\""},
-  "showDependabot":  {"editor": "boolean", "default": true, "tsType": "boolean"}
-}
-```
-
-## Application Architecture
-
-**Auth flow**: PAT entered → stored in `localStorage('gh_dash_pat')` → `initLoad()` fetches `/user` → on success, fetches all repos and triggers card loads.
-
-**State management**: All state lives in the single `Component` class. `renderVals()` computes the full derived view-model on every render — it returns all the values the template needs, including closures used as event handlers.
-
-**Data fetching**:
-- `gfetch(path)` — wraps GitHub REST API calls with the stored PAT
-- `fetchAllRepos()` — paginates up to 3 pages of `/user/repos`
-- `fetchCard(fullName)` — loads PRs + last commit + Dependabot alerts for one repo; checks CI via check-runs API (falls back to commit status API)
-
-**Persistence** (all in `localStorage`):
-- `gh_dash_pat` — GitHub Personal Access Token
-- `gh_dash_favs` — JSON array of pinned repo full names (e.g. `["owner/repo"]`)
-- `gh_dep_hist` — JSON object mapping repo full names to arrays of `{count, ts}` snapshots for Dependabot trend calculation
-
-**Card ordering**: Cards are always sorted by `lastCommit` descending in `getSortedFavorites()`. Drag-and-drop reorders the `favorites` array in localStorage, but sort is re-applied on next render.
-
-**Auto-refresh**: A 1-second tick interval counts down `countdownSec`; when it hits zero it calls `refreshAll()`. The countdown visualization is a `conic-gradient`.
-
-**CI status aggregation**: Per-PR CI status is checked via check-runs; the card header shows an aggregate dot (failure > pending > all-success > unknown).
-
-## Running the App
-
-Open `GitHub Dashboard.dc.html` directly in a browser (file:// works) or serve it with any static file server. The runtime loads React 18 from unpkg CDN on first load.
+## Commands
 
 ```bash
-# Quick local server
-python3 -m http.server 8080
-# then open http://localhost:8080/GitHub%20Dashboard.dc.html
+bun run dev          # Start with file-watching (development)
+bun run start        # Start server (production)
+bun run check        # Biome lint + format check
+bun run check:fix    # Biome lint + format (auto-fix)
+bun x tsc --noEmit   # Type check
+bun test tests/unit  # Unit tests
+bun run test:e2e     # Playwright e2e tests
 ```
 
-Required GitHub PAT scopes: `repo` (PRs, private repos) and `security_events` (Dependabot alerts).
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Bun |
+| Language | TypeScript (strict, `readonly` by default) |
+| HTTP server | `Bun.serve` |
+| UI | Server-side HTML template functions + HTMX (CDN, no build step) |
+| Database | SQLite via `bun:sqlite` |
+| Linter / Formatter | Biome (`biome.json`) |
+| Unit tests | Bun test (`tests/unit/`) |
+| E2E tests | Playwright (`tests/e2e/`) |
+| Git hooks | Husky — pre-commit runs check + typecheck + unit tests; commit-msg enforces Conventional Commits |
+| CI | GitHub Actions (`.github/workflows/ci.yml`) |
+
+## Architecture
+
+Three-layer Clean Architecture — domain types, SQLite repositories, HTTP application layer.
+
+```
+src/
+  db/
+    repos.ts              ← Repos interface (central entry point)
+    migrations.ts         ← Schema via PRAGMA user_version
+    sqlite-repository.ts  ← createSqliteRepos(dbPath): Repos
+    auth/                 ← auth-repo.ts (interface) + sqlite-auth-repo.ts
+    cards/                ← card-repo.ts + sqlite-card-repo.ts
+    pull-requests/        ← pr-repo.ts + sqlite-pr-repo.ts
+    dependabot/           ← dependabot-repo.ts + sqlite-dependabot-repo.ts
+  github/
+    github-client.ts      ← Stateless fetch wrapper, PAT injected
+  services/               ← Orchestrate repos + GitHub client; stateless functions
+  routes/                 ← HTTP route handlers, services injected
+  templates/              ← TypeScript functions returning HTML strings
+  server.ts               ← startServer(port, routes)
+  index.ts                ← Composition root: Repos → Services → Routes → Server
+```
+
+**Composition root** (`index.ts`) is the only place where dependencies are wired:
+```ts
+const repos = createSqliteRepos(dbPath)
+const client = createGitHubClient(repos.auth)
+const cardService = createCardService(repos, client)
+startServer(4242, [createCardRoute(cardService), ...])
+```
+
+**Rules:**
+- DB access only through repository methods — never raw SQL outside of `src/db/`
+- Services are stateless (pure functions with injected dependencies, no `this`)
+- All domain types are `readonly` / immutable
+- No global singletons
+
+## SQLite Schema
+
+5 tables: `settings` (key-value: pat, username, avatar_url), `pinned_repos` (full_name, sort_order), `repo_cache` (last_commit_at, pr_total, dependabot_count), `pull_requests` (per-repo PRs with ci_status, labels as JSON), `dependabot_history` (snapshots max every 30 min, pruned after 183 days).
+
+Schema is versioned via `PRAGMA user_version`. See `src/db/migrations.ts`.
+
+## Testing
+
+**Unit tests use real SQLite** — no DB mocking. Use `createTempDbPath` from `tests/unit/helpers/temp-db.ts`:
+
+```ts
+const { dir, dbPath } = createTempDbPath("gh-dash-cards-")
+const repos = createSqliteRepos(dbPath)
+// test behavior...
+repos.close()
+cleanupTempDir(dir)
+```
+
+GitHub Client is mocked via fetch-mock in service tests (not the DB).
+
+**E2E tests** use `tests/e2e/seed-db.ts` to populate a test SQLite DB, then run Playwright against a started Bun server.
+
+## UI Patterns
+
+Templates are TypeScript functions returning HTML strings. No JSX, no frontend framework, no build step for the UI.
+
+HTMX handles partial updates via attributes (`hx-get`, `hx-swap`, `hx-trigger`). Drag & drop is ~30 lines of vanilla JS. The server responds with HTML fragments and uses `HX-Trigger: cardsChanged` headers to coordinate refreshes.
+
+ViewModels are computed in route handlers (not in templates) — relative timestamps, CI colors, badge text are all resolved before reaching the template function.
+
+## Conventions
+
+- **Conventional Commits**: `feat(cards): add reorder endpoint`, `fix(auth): handle 403 on expired token`
+- **Biome** for all linting and formatting — no ESLint, no Prettier
+- **No `Co-Authored-By: Claude` in commits**
+- Branch protection: all CI checks must pass before merge
