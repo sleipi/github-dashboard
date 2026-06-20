@@ -1,0 +1,78 @@
+import { describe, expect, mock, test } from 'bun:test'
+import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
+import type { GitHubClient } from '../../../src/github/github-client.ts'
+import { createAuthRoutes } from '../../../src/routes/auth-route.ts'
+import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
+
+function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
+  return {
+    getUser: mock(async () => ({ login: 'alice', avatarUrl: 'https://x.com/a.png' })),
+    getRepos: mock(async () => []),
+    getPrs: mock(async () => []),
+    getLastCommitDate: mock(async () => null),
+    getCiStatus: mock(async () => 'unknown' as const),
+    getDependabotCount: mock(async () => null),
+    ...overrides,
+  }
+}
+
+describe('auth routes', () => {
+  test('GET / shows setup page when no token', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const routes = createAuthRoutes(repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(body).toContain('Personal Access Token')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/auth saves token and redirects on success', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const routes = createAuthRoutes(repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('pat', 'ghp_testtoken')
+    const req = new Request(url.href, { method: 'POST', body: form })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(req, url)
+
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('/')
+    expect(repos.auth.getToken()?.username).toBe('alice')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/auth with _method=DELETE clears token', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    const routes = createAuthRoutes(repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('_method', 'DELETE')
+    const req = new Request(url.href, { method: 'POST', body: form })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    await route.handle(req, url)
+
+    expect(repos.auth.getToken()).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+})
