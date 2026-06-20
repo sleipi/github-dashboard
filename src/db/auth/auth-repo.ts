@@ -1,2 +1,7 @@
-// Stub — will be replaced in Task 5
-export type AuthRepo = Record<string, never>
+import type { AuthToken } from '../types.ts'
+
+export interface AuthRepo {
+  getToken(): AuthToken | null
+  saveToken(token: AuthToken): void
+  deleteToken(): void
+}
