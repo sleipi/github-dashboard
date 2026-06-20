@@ -1,0 +1,6 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+bun run check
+bun x tsc --noEmit
+bun test tests/unit
