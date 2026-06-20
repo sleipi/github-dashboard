@@ -94,7 +94,7 @@ export function renderDashboard(cardsHtml: string, username: string): string {
             hx-get="/api/modal/repos" hx-target="#modal" hx-swap="innerHTML">
       + Repo hinzufügen
     </button>
-    <span style="font-size:13px;color:#8b949e">${username}</span>
+    <span style="font-size:13px;color:#8b949e">${escapeHtml(username)}</span>
     <form method="POST" action="/api/auth" style="margin:0">
       <input type="hidden" name="_method" value="DELETE">
       <button type="submit"

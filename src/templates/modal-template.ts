@@ -39,7 +39,7 @@ function renderRepoRow(vm: RepoListItemViewModel): string {
       ${vm.isPrivate ? '<span class="badge" style="margin-left:6px">Privat</span>' : ''}
     </div>
     <div style="font-size:11px;color:#6e7681;margin-top:2px">
-      ${vm.updatedAt}${vm.language ? ` · ${vm.language}` : ''}
+      ${vm.updatedAt}${vm.language ? ` · ${escapeHtml(vm.language)}` : ''}
     </div>
   </div>
   ${vm.starsDisplay ? `<span style="font-size:11px;color:#8b949e">★ ${vm.starsDisplay}</span>` : ''}
