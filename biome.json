@@ -29,6 +29,14 @@
     }
   },
   "files": {
-    "ignore": ["dist", "node_modules", ".husky", "support.js", "*.dc.html"]
+    "ignore": [
+      "dist",
+      "node_modules",
+      ".husky",
+      "support.js",
+      "*.dc.html",
+      "test-results",
+      "playwright-report"
+    ]
   }
 }

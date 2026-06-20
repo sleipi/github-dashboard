@@ -6,6 +6,8 @@ import { createAuthRoutes } from './routes/auth-route.ts'
 import { createCardRoutes } from './routes/card-route.ts'
 import { createModalRoutes } from './routes/modal-route.ts'
 import { createPrRoutes } from './routes/pr-route.ts'
+import { redirect } from './routes/route-handler.ts'
+import type { RouteHandler } from './routes/route-handler.ts'
 import { startServer } from './server.ts'
 import { createCardService } from './services/card-service.ts'
 
@@ -16,11 +18,26 @@ const repos = createSqliteRepos(DB_PATH)
 const client = createGitHubClient(repos.auth)
 const cardService = createCardService(repos, client)
 
-const routes = [
+const routes: RouteHandler[] = [
   ...createAuthRoutes(repos.auth, client),
   ...createCardRoutes(cardService, repos.auth),
   ...createModalRoutes(cardService, repos.cards),
   ...createPrRoutes(repos.pullRequests),
 ]
+
+// Test-only route: restore seeded session (only available when PLAYWRIGHT_TEST=1)
+if (process.env.PLAYWRIGHT_TEST === '1') {
+  routes.push({
+    match: (url, method) => url.pathname === '/api/test/restore-session' && method === 'POST',
+    handle() {
+      repos.auth.saveToken({
+        pat: 'ghp_testtoken000000000000000000000000',
+        username: 'testuser',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+      })
+      return redirect('/')
+    },
+  })
+}
 
 startServer(PORT, routes)

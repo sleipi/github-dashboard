@@ -10,9 +10,9 @@ export function createSqliteAuthRepo(db: Database): AuthRepo {
   return {
     getToken() {
       const pat = get.get('pat')?.value
-      const username = get.get('username')?.value
-      const avatarUrl = get.get('avatar_url')?.value
-      if (!pat || !username || !avatarUrl) return null
+      if (!pat) return null
+      const username = get.get('username')?.value ?? ''
+      const avatarUrl = get.get('avatar_url')?.value ?? ''
       return { pat, username, avatarUrl }
     },
 
