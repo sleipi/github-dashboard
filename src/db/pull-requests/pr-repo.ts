@@ -1,2 +1,8 @@
-// Stub — will be replaced in Task 7
-export type PrRepo = Record<string, never>
+import type { PullRequest, RepoCache, RepoCacheUpdate } from '../types.ts'
+
+export interface PrRepo {
+  getCache(fullName: string): RepoCache | null
+  upsertCache(fullName: string, data: RepoCacheUpdate): void
+  getPrs(fullName: string): PullRequest[]
+  upsertPrs(fullName: string, prs: ReadonlyArray<PullRequest>): void
+}
