@@ -96,7 +96,10 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
 
     async getCards() {
       const pinned = repos.cards.getPinned()
-      return Promise.all(pinned.map((p) => getCard(p.fullName)))
+      const results = await Promise.allSettled(pinned.map((p) => getCard(p.fullName)))
+      return results
+        .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
+        .map((r) => r.value)
     },
 
     async getAllRepos() {

@@ -1,5 +1,14 @@
 import type { CiStatus, DependabotTrend } from '../db/types.ts'
 
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export function formatRelative(date: Date | null, now: Date = new Date()): string {
   if (!date) return '—'
   const s = Math.floor((now.getTime() - date.getTime()) / 1000)

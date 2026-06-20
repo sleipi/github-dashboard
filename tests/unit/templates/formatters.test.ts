@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   aggregateCiStatus,
   depColor,
+  escapeHtml,
   formatRelative,
   formatTrend,
 } from '../../../src/templates/formatters.ts'
@@ -56,5 +57,28 @@ describe('depColor', () => {
   })
   test('gray for null', () => {
     expect(depColor(null)).toBe('#6e7681')
+  })
+})
+
+describe('escapeHtml', () => {
+  test('escapes ampersand', () => {
+    expect(escapeHtml('a&b')).toBe('a&amp;b')
+  })
+  test('escapes less-than', () => {
+    expect(escapeHtml('<script>')).toBe('&lt;script&gt;')
+  })
+  test('escapes double quotes', () => {
+    expect(escapeHtml('"hello"')).toBe('&quot;hello&quot;')
+  })
+  test('escapes single quotes', () => {
+    expect(escapeHtml("it's")).toBe('it&#39;s')
+  })
+  test('escapes all special chars in one string', () => {
+    expect(escapeHtml('<a href="foo&bar">it\'s</a>')).toBe(
+      '&lt;a href=&quot;foo&amp;bar&quot;&gt;it&#39;s&lt;/a&gt;',
+    )
+  })
+  test('leaves plain strings unchanged', () => {
+    expect(escapeHtml('hello world')).toBe('hello world')
   })
 })

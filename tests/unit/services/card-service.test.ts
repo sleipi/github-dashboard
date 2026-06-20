@@ -87,4 +87,25 @@ describe('CardService', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('getCards skips failed cards and returns the rest', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPrs = mock(async (fullName: string) => {
+      if (fullName === 'alice/broken') throw new Error('GitHub API error')
+      return []
+    })
+    const service = createCardService(repos, makeClient({ getPrs }))
+
+    repos.cards.pin('alice/alpha')
+    repos.cards.pin('alice/broken')
+    repos.cards.pin('alice/beta')
+
+    const cards = await service.getCards()
+
+    expect(cards).toHaveLength(2)
+    expect(cards.map((c) => c.fullName)).toEqual(['alice/alpha', 'alice/beta'])
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

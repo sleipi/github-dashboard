@@ -1,5 +1,5 @@
 import type { PullRequest } from '../db/types.ts'
-import { ciColor, ciLabel, formatRelative } from './formatters.ts'
+import { ciColor, ciLabel, escapeHtml, formatRelative } from './formatters.ts'
 
 function labelStyle(hexColor: string): string {
   const r = Number.parseInt(hexColor.slice(0, 2), 16) || 139
@@ -10,13 +10,14 @@ function labelStyle(hexColor: string): string {
 
 export function renderPrModal(fullName: string, prs: PullRequest[]): string {
   const now = new Date()
+  const safeFullName = escapeHtml(fullName)
   return `
 <div class="modal-overlay" style="max-width:980px;padding:48px 20px 20px"
      onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
   <div class="modal" style="max-width:980px" onclick="event.stopPropagation()">
     <div style="padding:14px 20px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:10px">
       <span style="font-size:14px;font-weight:600;flex:1">
-        Pull Requests &nbsp;<span style="color:#6e7681;font-weight:400">${fullName}</span>
+        Pull Requests &nbsp;<span style="color:#6e7681;font-weight:400">${safeFullName}</span>
       </span>
       <button onclick="document.getElementById('modal').innerHTML=''"
               style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:20px">×</button>
@@ -42,12 +43,12 @@ export function renderPrModal(fullName: string, prs: PullRequest[]): string {
         </div>
         <div style="display:flex;align-items:center;gap:6px;min-width:0;padding-right:12px">
           <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${pr.title}
+            ${escapeHtml(pr.title)}
           </span>
           ${pr.draft ? '<span class="badge">Draft</span>' : ''}
-          ${pr.labels.map((l) => `<span style="font-size:10px;border-radius:20px;padding:1px 7px;${labelStyle(l.color)}">${l.name}</span>`).join('')}
+          ${pr.labels.map((l) => `<span style="font-size:10px;border-radius:20px;padding:1px 7px;${labelStyle(l.color)}">${escapeHtml(l.name)}</span>`).join('')}
         </div>
-        <span style="font-size:11px;color:#8b949e">${pr.creator}</span>
+        <span style="font-size:11px;color:#8b949e">${escapeHtml(pr.creator)}</span>
         <span style="font-size:11px;color:#8b949e">${formatRelative(pr.createdAt, now)}</span>
         <span style="font-size:11px;color:#8b949e">${formatRelative(pr.updatedAt, now)}</span>
       </a>`,

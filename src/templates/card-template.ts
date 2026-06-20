@@ -5,6 +5,7 @@ import {
   ciColor,
   ciLabel,
   depColor,
+  escapeHtml,
   formatRelative,
   formatTrend,
 } from './formatters.ts'
@@ -77,23 +78,26 @@ export function toCardViewModel(data: CardData): CardViewModel {
 }
 
 export function renderCard(vm: CardViewModel): string {
+  const safeOwner = escapeHtml(vm.owner)
+  const safeName = escapeHtml(vm.name)
+  const safeFullName = escapeHtml(vm.fullName)
   return `
-<div class="card" draggable="true" data-card-name="${vm.fullName}"
+<div class="card" draggable="true" data-card-name="${safeFullName}"
      style="border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
   <div class="card-header">
     <div style="flex:1;min-width:0;overflow:hidden">
       <a href="${vm.repoUrl}" target="_blank" rel="noopener noreferrer"
          style="text-decoration:none;color:inherit">
-        <span style="font-size:11px;color:#6e7681">${vm.owner}/</span><span
-          style="font-size:13px;font-weight:600">${vm.name}</span>
+        <span style="font-size:11px;color:#6e7681">${safeOwner}/</span><span
+          style="font-size:13px;font-weight:600">${safeName}</span>
       </a>
     </div>
     ${vm.showCiDot ? `<div class="ci-dot" style="background:${vm.ciDotColor}" title="${vm.ciDotLabel}"></div>` : ''}
-    <button hx-get="/api/card/${vm.owner}/${vm.name}"
+    <button hx-get="/api/card/${safeOwner}/${safeName}"
             hx-target="closest .card" hx-swap="outerHTML"
             style="background:transparent;border:none;padding:3px;color:#6e7681;cursor:pointer"
             title="Neu laden">↻</button>
-    <button hx-post="/api/cards/${vm.owner}/${vm.name}"
+    <button hx-post="/api/cards/${safeOwner}/${safeName}"
             hx-swap="none" hx-on::after-request="htmx.trigger(document.body,'cardsChanged')"
             style="background:transparent;border:none;padding:3px 5px;color:#6e7681;cursor:pointer"
             title="Entfernen">×</button>
@@ -129,7 +133,7 @@ export function renderCard(vm: CardViewModel): string {
         <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer" class="pr-row">
           <div class="ci-dot" style="background:${pr.ciColor}" title="${pr.ciLabel}"></div>
           <span style="font-size:10px;color:#6e7681;font-family:monospace">#${pr.number}</span>
-          <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${pr.title}</span>
+          <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escapeHtml(pr.title)}</span>
           ${pr.draft ? '<span class="badge">Draft</span>' : ''}
         </a>`,
           )
@@ -138,7 +142,7 @@ export function renderCard(vm: CardViewModel): string {
       ${
         vm.hasMore
           ? `
-      <button hx-get="/api/prs/${vm.owner}/${vm.name}"
+      <button hx-get="/api/prs/${safeOwner}/${safeName}"
               hx-target="#modal" hx-swap="innerHTML"
               style="width:100%;font-size:11px;color:#2f81f7;padding:5px;text-align:center;
                      background:transparent;border:none;cursor:pointer;font-family:inherit">

@@ -1,5 +1,5 @@
 import type { GitHubRepo } from '../github/github-client.ts'
-import { formatRelative } from './formatters.ts'
+import { escapeHtml, formatRelative } from './formatters.ts'
 import type { RepoListItemViewModel } from './types.ts'
 
 export function toRepoListItem(repo: GitHubRepo, isPinned: boolean): RepoListItemViewModel {
@@ -16,11 +16,14 @@ export function toRepoListItem(repo: GitHubRepo, isPinned: boolean): RepoListIte
 }
 
 function renderRepoRow(vm: RepoListItemViewModel): string {
+  const safeOwner = escapeHtml(vm.owner)
+  const safeName = escapeHtml(vm.name)
+  const safeFullName = escapeHtml(vm.fullName)
   return `
-<div data-repo-name="${vm.fullName}"
+<div data-repo-name="${safeFullName}"
      style="display:flex;align-items:center;gap:12px;padding:10px 16px;
             border-bottom:1px solid #21262d;cursor:pointer"
-     hx-post="/api/cards/${vm.owner}/${vm.name}"
+     hx-post="/api/cards/${safeOwner}/${safeName}"
      hx-swap="none"
      hx-on::after-request="htmx.trigger(document.body,'cardsChanged')"
      onclick="this.querySelector('.check').style.background = this.querySelector('.check').style.background === 'rgb(35,134,54)' ? 'transparent' : '#238636'">
@@ -32,7 +35,7 @@ function renderRepoRow(vm: RepoListItemViewModel): string {
   </div>
   <div style="flex:1;min-width:0">
     <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-      <span style="color:#6e7681">${vm.owner}/</span><span style="font-weight:500">${vm.name}</span>
+      <span style="color:#6e7681">${safeOwner}/</span><span style="font-weight:500">${safeName}</span>
       ${vm.isPrivate ? '<span class="badge" style="margin-left:6px">Privat</span>' : ''}
     </div>
     <div style="font-size:11px;color:#6e7681;margin-top:2px">

@@ -159,9 +159,20 @@ export function createGitHubClient(
 
     async getDependabotCount(fullName) {
       try {
-        const alerts = (await gfetch(
-          `/repos/${fullName}/dependabot/alerts?state=open&per_page=100`,
-        )) as unknown[]
+        // Fetches up to 300 open alerts (3 pages × 100). Repos with >300 alerts
+        // will show 300 instead of the true count.
+        const pages = await Promise.all([
+          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=1`) as Promise<
+            unknown[]
+          >,
+          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=2`).catch(
+            () => [],
+          ) as Promise<unknown[]>,
+          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=3`).catch(
+            () => [],
+          ) as Promise<unknown[]>,
+        ])
+        const alerts = pages.flat()
         return Array.isArray(alerts) ? alerts.length : null
       } catch {
         return null

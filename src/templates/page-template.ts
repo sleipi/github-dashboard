@@ -1,3 +1,4 @@
+import { escapeHtml } from './formatters.ts'
 import { DASHBOARD_CSS } from './styles.ts'
 
 const CLIENT_SCRIPT = `
@@ -58,7 +59,7 @@ export function renderSetupPage(error?: string): string {
                style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
                       padding:9px 12px;color:#e6edf3;font-size:13px;font-family:monospace;
                       outline:none;margin-bottom:12px"/>
-        ${error ? `<div style="color:#f85149;font-size:13px;margin-bottom:12px">${error}</div>` : ''}
+        ${error ? `<div style="color:#f85149;font-size:13px;margin-bottom:12px">${escapeHtml(error)}</div>` : ''}
         <div style="font-size:12px;color:#8b949e;margin-bottom:16px">
           Benötigte Scopes: <code>repo</code> · <code>security_events</code>
         </div>
