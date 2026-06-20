@@ -1,0 +1,26 @@
+{
+  "name": "github-dashboard",
+  "version": "0.1.0",
+  "description": "Local GitHub dashboard — PRs, CI status, Dependabot alerts at a glance",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "bun x tsc --noEmit",
+    "test": "bun test tests/unit",
+    "test:e2e": "playwright test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@playwright/test": "^1.45.0",
+    "@types/bun": "^1.1.0",
+    "husky": "^9.0.0",
+    "playwright": "^1.45.0"
+  }
+}
