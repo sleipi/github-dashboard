@@ -32,6 +32,71 @@ describe('toCardViewModel', () => {
     const vm = toCardViewModel(emptyCardData('alice/alpha'))
     expect(vm.depDisplay).toBe('0')
   })
+
+  test('borderColor is bright green and has glow for a commit < 1 hour ago', () => {
+    const recentData: CardData = {
+      ...emptyCardData('alice/fresh'),
+      cache: {
+        ...emptyCardData('alice/fresh').cache,
+        lastCommitAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
+      },
+    }
+    const vm = toCardViewModel(recentData)
+    expect(vm.borderColor).toBe('#2ea043')
+    expect(vm.borderGlow).toBe('0 0 0 1px #2ea043')
+  })
+
+  test('borderColor is medium green for a commit < 1 day ago', () => {
+    const recentData: CardData = {
+      ...emptyCardData('alice/today'),
+      cache: {
+        ...emptyCardData('alice/today').cache,
+        lastCommitAt: new Date(Date.now() - 2 * 3_600_000), // 2 hours ago
+      },
+    }
+    const vm = toCardViewModel(recentData)
+    expect(vm.borderColor).toBe('#1a6b32')
+    expect(vm.borderGlow).toBe('0 0 0 1px #1a6b3266')
+  })
+
+  test('borderColor is dark green for a commit < 3 days ago', () => {
+    const recentData: CardData = {
+      ...emptyCardData('alice/recent'),
+      cache: {
+        ...emptyCardData('alice/recent').cache,
+        lastCommitAt: new Date(Date.now() - 2 * 86_400_000), // 2 days ago
+      },
+    }
+    const vm = toCardViewModel(recentData)
+    expect(vm.borderColor).toBe('#1a4228')
+    expect(vm.borderGlow).toBe('')
+  })
+
+  test('borderColor is gray for a commit > 3 days ago', () => {
+    const recentData: CardData = {
+      ...emptyCardData('alice/old'),
+      cache: {
+        ...emptyCardData('alice/old').cache,
+        lastCommitAt: new Date(Date.now() - 7 * 86_400_000), // 7 days ago
+      },
+    }
+    const vm = toCardViewModel(recentData)
+    expect(vm.borderColor).toBe('#30363d')
+    expect(vm.borderGlow).toBe('')
+  })
+
+  test('borderColor is gray when lastCommitAt is null', () => {
+    const recentData: CardData = {
+      ...emptyCardData('alice/unknown'),
+      cache: {
+        ...emptyCardData('alice/unknown').cache,
+        lastCommitAt: null,
+      },
+    }
+    const vm = toCardViewModel(recentData)
+    expect(vm.borderColor).toBe('#30363d')
+    expect(vm.borderGlow).toBe('')
+  })
 })
 
 describe('renderCard', () => {

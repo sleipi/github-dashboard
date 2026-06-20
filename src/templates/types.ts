@@ -30,6 +30,8 @@ export type CardViewModel = {
   readonly prMore: number
   readonly hasMore: boolean
   readonly prMoreLabel: string
+  readonly borderColor: string
+  readonly borderGlow: string
 }
 
 export type RepoListItemViewModel = {

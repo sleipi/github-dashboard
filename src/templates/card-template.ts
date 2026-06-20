@@ -12,6 +12,17 @@ import type { CardViewModel, PrRowViewModel } from './types.ts'
 
 const MAX_PRS_ON_CARD = 6
 
+function commitBorderStyle(lastCommitAt: Date | null): { borderColor: string; borderGlow: string } {
+  if (!lastCommitAt) return { borderColor: '#30363d', borderGlow: '' }
+  const ageMs = Date.now() - lastCommitAt.getTime()
+  const HOUR = 3_600_000
+  const DAY = 86_400_000
+  if (ageMs < HOUR) return { borderColor: '#2ea043', borderGlow: '0 0 0 1px #2ea043' }
+  if (ageMs < DAY) return { borderColor: '#1a6b32', borderGlow: '0 0 0 1px #1a6b3266' }
+  if (ageMs < 3 * DAY) return { borderColor: '#1a4228', borderGlow: '' }
+  return { borderColor: '#30363d', borderGlow: '' }
+}
+
 export function toCardViewModel(data: CardData): CardViewModel {
   const { fullName, cache, prs, trend } = data
   const [owner = '', name = ''] = fullName.split('/')
@@ -61,13 +72,14 @@ export function toCardViewModel(data: CardData): CardViewModel {
     prMore,
     hasMore: prMore > 0,
     prMoreLabel: prMore === 1 ? '+ 1 weiterer PR' : `+ ${prMore} weitere PRs`,
+    ...commitBorderStyle(cache.lastCommitAt),
   }
 }
 
 export function renderCard(vm: CardViewModel): string {
   return `
 <div class="card" draggable="true" data-card-name="${vm.fullName}"
-     style="border-color: ${vm.ciDotColor === 'transparent' ? '#30363d' : '#30363d'}">
+     style="border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
   <div class="card-header">
     <div style="flex:1;min-width:0;overflow:hidden">
       <a href="${vm.repoUrl}" target="_blank" rel="noopener noreferrer"
