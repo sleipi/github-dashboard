@@ -178,10 +178,15 @@ describe('card routes', () => {
     cleanupTempDir(dir)
   })
 
-  test('GET / calls getUser once to backfill expiresAt when it is null', async () => {
+  test('GET / calls getUser once to backfill expiresAt when it is undefined (unchecked)', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-route-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: '',
+      expiresAt: undefined,
+    })
 
     const expiresAt = new Date('2026-12-31T00:00:00.000Z')
     const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt }))
@@ -196,6 +201,27 @@ describe('card routes', () => {
 
     expect(getUser).toHaveBeenCalledTimes(1)
     expect(repos.auth.getToken()?.expiresAt?.toISOString()).toBe('2026-12-31T00:00:00.000Z')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET / skips backfill when expiresAt is null (confirmed no expiry)', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: null }))
+    const client = makeClient({ getUser })
+    const service = makeCardService(repos)
+    const routes = createCardRoutes(service, repos.auth, client)
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(getUser).not.toHaveBeenCalled()
 
     repos.close()
     cleanupTempDir(dir)

@@ -27,7 +27,7 @@ export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): Rout
         if (!pat) return html(renderSetupPage('Bitte Token eingeben'), 400)
 
         try {
-          authRepo.saveToken({ pat, username: '', avatarUrl: '', expiresAt: null })
+          authRepo.saveToken({ pat, username: '', avatarUrl: '', expiresAt: undefined })
           const user = await client.getUser()
           authRepo.saveToken({
             pat,

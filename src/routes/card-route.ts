@@ -26,7 +26,7 @@ export function createCardRoutes(
         if (!token) return redirect('/')
 
         // Backfill expiresAt once for existing users (fires at most once per token)
-        if (token.expiresAt === null) {
+        if (token.expiresAt === undefined) {
           try {
             const user = await client.getUser()
             const updated = {
@@ -45,13 +45,13 @@ export function createCardRoutes(
         const cards = await cardService.getCards()
         const vms = cards.map(toCardViewModel)
         const severity =
-          token.expiresAt !== null ? getPatExpirySeverity(token.expiresAt, new Date()) : null
+          token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
         return html(
           renderDashboard(
             renderCards(vms),
             token.username,
             token.avatarUrl,
-            token.expiresAt,
+            token.expiresAt instanceof Date ? token.expiresAt : null,
             severity,
           ),
         )

@@ -108,7 +108,7 @@ describe('AuthRepo', () => {
     repos.close()
   })
 
-  test('getToken returns null expiresAt for tokens saved without the key (upgrade path)', () => {
+  test('getToken returns undefined expiresAt for tokens saved without the key (upgrade path)', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-auth-')
     cleanup.push(dir)
 
@@ -125,7 +125,25 @@ describe('AuthRepo', () => {
     const token = repos.auth.getToken()
 
     expect(token?.pat).toBe('ghp_legacy')
-    expect(token?.expiresAt).toBeNull()
+    expect(token?.expiresAt).toBeUndefined()
+
+    repos.close()
+  })
+
+  test('saveToken with undefined expiresAt round-trips to undefined (row absent)', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-auth-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: '',
+      expiresAt: undefined,
+    })
+    const token = repos.auth.getToken()
+
+    expect(token?.expiresAt).toBeUndefined()
 
     repos.close()
   })
@@ -154,7 +172,7 @@ describe('AuthRepo', () => {
     const repos2 = createSqliteRepos(dbPath)
     const token = repos2.auth.getToken()
 
-    expect(token?.expiresAt).toBeNull()
+    expect(token?.expiresAt).toBeUndefined()
 
     repos2.close()
   })
