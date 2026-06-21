@@ -129,4 +129,51 @@ describe('auth routes', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('POST /api/auth saves expiresAt from getUser result', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const expiresAt = new Date('2026-12-31T21:01:12.000Z')
+    const routes = createAuthRoutes(
+      repos.auth,
+      makeClient({ getUser: mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt })) }),
+    )
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('pat', 'ghp_testtoken')
+    const req = new Request(url.href, { method: 'POST', body: form })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    await route.handle(req, url)
+
+    expect(repos.auth.getToken()?.expiresAt?.toISOString()).toBe('2026-12-31T21:01:12.000Z')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/auth with HX-Request header returns HX-Redirect instead of 302', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const routes = createAuthRoutes(repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('pat', 'ghp_testtoken')
+    const req = new Request(url.href, {
+      method: 'POST',
+      body: form,
+      headers: { 'HX-Request': 'true' },
+    })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(req, url)
+
+    expect(res.headers.get('HX-Redirect')).toBe('/')
+    expect(res.status).toBe(200)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

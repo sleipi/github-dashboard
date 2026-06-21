@@ -6,19 +6,18 @@ import type { RouteHandler } from './route-handler.ts'
 
 export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): RouteHandler[] {
   return [
-    // GET / — Setup-Seite wenn nicht eingeloggt
+    // GET / — Setup page when not logged in
     {
       match: (url, method) => url.pathname === '/' && method === 'GET' && !authRepo.getToken(),
       handle: () => html(renderSetupPage()),
     },
-    // POST /api/auth — PAT speichern
+    // POST /api/auth — Save or delete PAT
     {
       match: (url, method) => url.pathname === '/api/auth' && method === 'POST',
       async handle(req) {
         const form = await req.formData()
         const methodOverride = form.get('_method')
 
-        // DELETE via POST (_method override für HTML-Forms)
         if (methodOverride === 'DELETE') {
           authRepo.deleteToken()
           return redirect('/')
@@ -28,15 +27,18 @@ export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): Rout
         if (!pat) return html(renderSetupPage('Bitte Token eingeben'), 400)
 
         try {
-          // PAT temporär setzen um getUser() zu testen
           authRepo.saveToken({ pat, username: '', avatarUrl: '', expiresAt: null })
           const user = await client.getUser()
           authRepo.saveToken({
             pat,
             username: user.login,
             avatarUrl: user.avatarUrl,
-            expiresAt: null,
+            expiresAt: user.expiresAt,
           })
+
+          if (req.headers.get('HX-Request') === 'true') {
+            return new Response(null, { status: 200, headers: { 'HX-Redirect': '/' } })
+          }
           return redirect('/')
         } catch (e) {
           authRepo.deleteToken()
