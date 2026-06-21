@@ -19,7 +19,12 @@ describe('GitHubClient', () => {
   test('getUser maps login and avatar_url', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: 'https://x.com/a.png' })
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: 'https://x.com/a.png',
+      expiresAt: null,
+    })
 
     const fetchFn = makeJsonFetch({
       '/user': { login: 'alice', avatar_url: 'https://x.com/a.png' },
@@ -37,7 +42,12 @@ describe('GitHubClient', () => {
   test('getCiStatus returns success when all check-runs completed successfully', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: 'https://x.com/a.png' })
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: 'https://x.com/a.png',
+      expiresAt: null,
+    })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': {
@@ -58,7 +68,12 @@ describe('GitHubClient', () => {
   test('getCiStatus returns failure when any run failed', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: 'https://x.com/a.png' })
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: 'https://x.com/a.png',
+      expiresAt: null,
+    })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': {
@@ -79,7 +94,7 @@ describe('GitHubClient', () => {
   test('getDependabotCount returns null on 403', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(async () => new Response('{}', { status: 403 }))
     const client = createGitHubClient(repos.auth, fetchFn)
@@ -93,7 +108,7 @@ describe('GitHubClient', () => {
   test('getDependabotCount returns null on 400 (page param not supported)', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(
       async () =>
@@ -113,7 +128,7 @@ describe('GitHubClient', () => {
   test('getDependabotCount counts alerts on a single page', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const alerts = Array.from({ length: 5 }, (_, i) => ({ number: i + 1 }))
     const fetchFn = mock(
@@ -134,7 +149,7 @@ describe('GitHubClient', () => {
   test('getDependabotCount folgt Link-Header cursor-basierter Paginierung', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const page1 = Array.from({ length: 100 }, (_, i) => ({ number: i + 1 }))
     const page2 = Array.from({ length: 16 }, (_, i) => ({ number: i + 101 }))
@@ -166,7 +181,7 @@ describe('GitHubClient', () => {
   test('getRepos maps API response fields to GitHubRepo', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/user/repos?per_page=100&sort=updated&page=1': [
@@ -203,7 +218,7 @@ describe('GitHubClient', () => {
   test('getRepos combines results from multiple pages', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const makeRepo = (name: string) => ({
       full_name: `alice/${name}`,
@@ -233,7 +248,7 @@ describe('GitHubClient', () => {
   test('getPrs maps API response including labels and draft flag', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/pulls': [
@@ -275,7 +290,7 @@ describe('GitHubClient', () => {
   test('getLastCommitDate returns a Date from the most recent commit', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits': [{ commit: { committer: { date: '2026-06-01T12:00:00Z' } } }],
@@ -292,7 +307,7 @@ describe('GitHubClient', () => {
   test('getLastCommitDate returns null when commit list is empty', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({ '/repos/alice/alpha/commits': [] })
     const client = createGitHubClient(repos.auth, fetchFn)
@@ -307,7 +322,7 @@ describe('GitHubClient', () => {
   test('getLastCommitDate returns null when committer is null', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits': [{ commit: { committer: null } }],
@@ -324,7 +339,7 @@ describe('GitHubClient', () => {
   test('getCiStatus returns pending when any check-run is not yet completed', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': {
@@ -345,7 +360,7 @@ describe('GitHubClient', () => {
   test('getCiStatus falls back to commit status endpoint when no check-runs exist', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': { check_runs: [] },
@@ -362,7 +377,7 @@ describe('GitHubClient', () => {
   test('getCiStatus returns failure from commit status endpoint', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': { check_runs: [] },
@@ -379,7 +394,7 @@ describe('GitHubClient', () => {
   test('getCiStatus returns pending from commit status endpoint', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': { check_runs: [] },
@@ -396,7 +411,7 @@ describe('GitHubClient', () => {
   test('getCiStatus returns unknown from commit status endpoint for unrecognised state', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = makeJsonFetch({
       '/repos/alice/alpha/commits/abc123/check-runs': { check_runs: [] },
@@ -413,7 +428,7 @@ describe('GitHubClient', () => {
   test('getCiStatus returns unknown when the API call throws', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(async () => {
       throw new Error('network error')
@@ -445,7 +460,7 @@ describe('GitHubClient', () => {
   test('gfetch throws on 401 response', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_expired', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_expired', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(async () => new Response('', { status: 401 }))
     const client = createGitHubClient(repos.auth, fetchFn)
@@ -459,7 +474,7 @@ describe('GitHubClient', () => {
   test('gfetch throws with server message on 403 response', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(
       async () =>
@@ -479,7 +494,7 @@ describe('GitHubClient', () => {
   test('gfetch throws with fallback message on 403 when body has no message field', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(
       async () =>
@@ -499,7 +514,7 @@ describe('GitHubClient', () => {
   test('gfetch throws with API message on non-ok response', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(
       async () =>
@@ -519,7 +534,7 @@ describe('GitHubClient', () => {
   test('gfetch throws with fallback status message on non-ok response with no body message', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
     const fetchFn = mock(async () => new Response('', { status: 500 }))
     const client = createGitHubClient(repos.auth, fetchFn)

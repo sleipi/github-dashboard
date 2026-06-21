@@ -13,7 +13,9 @@ export function createSqliteAuthRepo(db: Database): AuthRepo {
       if (!pat) return null
       const username = get.get('username')?.value ?? ''
       const avatarUrl = get.get('avatar_url')?.value ?? ''
-      return { pat, username, avatarUrl }
+      const expiresAtRaw = get.get('pat_expires_at')?.value
+      const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null
+      return { pat, username, avatarUrl, expiresAt }
     },
 
     saveToken(token) {
@@ -21,11 +23,18 @@ export function createSqliteAuthRepo(db: Database): AuthRepo {
         upsert.run('pat', token.pat)
         upsert.run('username', token.username)
         upsert.run('avatar_url', token.avatarUrl)
+        if (token.expiresAt != null) {
+          upsert.run('pat_expires_at', token.expiresAt.toISOString())
+        } else {
+          db.run("DELETE FROM settings WHERE key = 'pat_expires_at'")
+        }
       })()
     },
 
     deleteToken() {
-      db.run("DELETE FROM settings WHERE key IN ('pat', 'username', 'avatar_url')")
+      db.run(
+        "DELETE FROM settings WHERE key IN ('pat', 'username', 'avatar_url', 'pat_expires_at')",
+      )
     },
   }
 }

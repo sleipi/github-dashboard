@@ -9,7 +9,12 @@ export function seedTestDb(dbPath: string): void {
   const repos = createSqliteRepos(dbPath)
 
   // Auth
-  repos.auth.saveToken({ pat: TEST_PAT, username: TEST_USER, avatarUrl: TEST_AVATAR })
+  repos.auth.saveToken({
+    pat: TEST_PAT,
+    username: TEST_USER,
+    avatarUrl: TEST_AVATAR,
+    expiresAt: null,
+  })
 
   // Gepinnte Repos
   repos.cards.pin('alice/awesome-project')

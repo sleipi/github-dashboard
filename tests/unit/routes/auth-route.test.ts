@@ -59,7 +59,7 @@ describe('auth routes', () => {
   test('POST /api/auth with _method=DELETE clears token', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-route-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
     const routes = createAuthRoutes(repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/auth')

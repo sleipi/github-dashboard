@@ -29,9 +29,14 @@ export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): Rout
 
         try {
           // PAT temporär setzen um getUser() zu testen
-          authRepo.saveToken({ pat, username: '', avatarUrl: '' })
+          authRepo.saveToken({ pat, username: '', avatarUrl: '', expiresAt: null })
           const user = await client.getUser()
-          authRepo.saveToken({ pat, username: user.login, avatarUrl: user.avatarUrl })
+          authRepo.saveToken({
+            pat,
+            username: user.login,
+            avatarUrl: user.avatarUrl,
+            expiresAt: null,
+          })
           return redirect('/')
         } catch (e) {
           authRepo.deleteToken()

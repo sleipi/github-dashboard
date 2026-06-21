@@ -39,7 +39,7 @@ describe('card routes', () => {
   test('GET /api/cards returns cards HTML', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '' })
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
     const service = createCardService(repos, makeClient())
     const routes = createCardRoutes(service, repos.auth)
 
@@ -58,7 +58,12 @@ describe('card routes', () => {
   test('GET / with token renders the full dashboard HTML', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
     const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: 'https://x.com/a.png' })
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: 'https://x.com/a.png',
+      expiresAt: null,
+    })
     const service = createCardService(repos, makeClient())
     const routes = createCardRoutes(service, repos.auth)
 

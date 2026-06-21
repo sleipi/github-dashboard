@@ -34,6 +34,7 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
         pat: 'ghp_testtoken000000000000000000000000',
         username: 'testuser',
         avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
+        expiresAt: null,
       })
       // Re-pin repos (INSERT OR IGNORE is idempotent) and restore canonical order
       repos.cards.pin('alice/awesome-project')

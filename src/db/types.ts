@@ -9,6 +9,7 @@ export type AuthToken = {
   readonly pat: string
   readonly username: string
   readonly avatarUrl: string
+  readonly expiresAt: Date | null
 }
 
 export type PinnedRepo = {
