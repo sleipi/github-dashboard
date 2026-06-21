@@ -54,6 +54,17 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
       return redirect('/')
     },
   })
+  routes.push({
+    match: (url, method) => url.pathname === '/api/test/set-expiry' && method === 'POST',
+    async handle(req) {
+      const body = (await req.json()) as { daysFromNow: number }
+      const token = repos.auth.getToken()
+      if (!token) return new Response('no token', { status: 400 })
+      const expiresAt = new Date(Date.now() + body.daysFromNow * 86_400_000)
+      repos.auth.saveToken({ ...token, expiresAt })
+      return new Response('ok')
+    },
+  })
 }
 
 startServer(PORT, routes)

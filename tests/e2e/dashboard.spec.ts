@@ -1,6 +1,79 @@
 /// <reference lib="dom" />
 import { expect, test } from '@playwright/test'
 
+test.describe('PAT expiry icon', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+  })
+
+  test('no icon shown when session has no expiry date', async ({ page }) => {
+    // restore-session seeds expiresAt: null
+    await page.goto('/')
+    await expect(page.locator('[aria-label="PAT expiry warning"]')).not.toBeVisible()
+  })
+
+  test('shows info icon (blue) when expiry is more than 21 days away', async ({ page }) => {
+    await page.request.post('/api/test/set-expiry', {
+      data: JSON.stringify({ daysFromNow: 30 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await page.goto('/')
+    const icon = page.locator('[aria-label="PAT expiry warning"]')
+    await expect(icon).toBeVisible()
+    const color = await icon.evaluate((el) => (el as HTMLElement).style.color)
+    expect(color).toContain('rgb(56, 139, 253)')
+  })
+
+  test('shows notice icon (amber) when expiry is 4–21 days away', async ({ page }) => {
+    await page.request.post('/api/test/set-expiry', {
+      data: JSON.stringify({ daysFromNow: 10 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await page.goto('/')
+    const icon = page.locator('[aria-label="PAT expiry warning"]')
+    await expect(icon).toBeVisible()
+    const style = await icon.getAttribute('style')
+    expect(style).toContain('#d29922')
+  })
+
+  test('shows warning icon (red) when expiry is 3 days or less', async ({ page }) => {
+    await page.request.post('/api/test/set-expiry', {
+      data: JSON.stringify({ daysFromNow: 2 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await page.goto('/')
+    const icon = page.locator('[aria-label="PAT expiry warning"]')
+    await expect(icon).toBeVisible()
+    const style = await icon.getAttribute('style')
+    expect(style).toContain('#f85149')
+  })
+
+  test('clicking icon opens the renewal modal', async ({ page }) => {
+    await page.request.post('/api/test/set-expiry', {
+      data: JSON.stringify({ daysFromNow: 2 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await page.goto('/')
+    await page.locator('[aria-label="PAT expiry warning"]').click()
+    await expect(page.locator('#pat-modal')).toBeVisible()
+    await expect(page.getByText('Create a new token on GitHub →')).toBeVisible()
+    await expect(page.locator('#pat-modal input[name="pat"]')).toBeVisible()
+  })
+
+  test('clicking modal backdrop closes it', async ({ page }) => {
+    await page.request.post('/api/test/set-expiry', {
+      data: JSON.stringify({ daysFromNow: 2 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    await page.goto('/')
+    await page.locator('[aria-label="PAT expiry warning"]').click()
+    await expect(page.locator('#pat-modal')).toBeVisible()
+    // Click the backdrop (the overlay element itself, not the inner dialog)
+    await page.locator('#pat-modal').click({ position: { x: 5, y: 5 } })
+    await expect(page.locator('#pat-modal')).not.toBeVisible()
+  })
+})
+
 // Der Server läuft mit der seeded DB aus seed-db.ts
 // Enthält: 2 gepinnte Repos, 2 PRs für alice/awesome-project
 

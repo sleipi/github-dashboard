@@ -5,7 +5,7 @@ const TEST_PAT = 'ghp_testtoken000000000000000000000000'
 const TEST_USER = 'testuser'
 const TEST_AVATAR = 'https://avatars.githubusercontent.com/u/1?v=4'
 
-export function seedTestDb(dbPath: string): void {
+export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): void {
   const repos = createSqliteRepos(dbPath)
 
   // Auth
@@ -13,7 +13,7 @@ export function seedTestDb(dbPath: string): void {
     pat: TEST_PAT,
     username: TEST_USER,
     avatarUrl: TEST_AVATAR,
-    expiresAt: null,
+    expiresAt: opts.patExpiresAt ?? null,
   })
 
   // Gepinnte Repos
