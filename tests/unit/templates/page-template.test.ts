@@ -75,4 +75,47 @@ describe('renderDashboard', () => {
     const html = renderDashboard('', 'alice', '')
     expect(html).toContain('hx-get="/api/modal/repos"')
   })
+
+  test('renders no expiry icon when expiresAt is null', () => {
+    const html = renderDashboard('', 'alice', '', null, null)
+    expect(html).not.toContain('pat-modal')
+  })
+
+  test('renders expiry icon with info color when severity is info', () => {
+    const expiresAt = new Date(Date.now() + 30 * 86_400_000)
+    const html = renderDashboard('', 'alice', '', expiresAt, 'info')
+    expect(html).toContain('#388bfd')
+    expect(html).toContain('pat-modal')
+  })
+
+  test('renders expiry icon with notice color when severity is notice', () => {
+    const expiresAt = new Date(Date.now() + 10 * 86_400_000)
+    const html = renderDashboard('', 'alice', '', expiresAt, 'notice')
+    expect(html).toContain('#d29922')
+  })
+
+  test('renders expiry icon with warning color when severity is warning', () => {
+    const expiresAt = new Date(Date.now() + 1 * 86_400_000)
+    const html = renderDashboard('', 'alice', '', expiresAt, 'warning')
+    expect(html).toContain('#f85149')
+  })
+
+  test('icon title contains days remaining and expiry date', () => {
+    const expiresAt = new Date('2026-12-31T00:00:00.000Z')
+    const html = renderDashboard('', 'alice', '', expiresAt, 'info')
+    expect(html).toContain('2026-12-31')
+  })
+
+  test('renewal modal contains link to GitHub token settings', () => {
+    const expiresAt = new Date(Date.now() + 30 * 86_400_000)
+    const html = renderDashboard('', 'alice', '', expiresAt, 'info')
+    expect(html).toContain('https://github.com/settings/tokens')
+  })
+
+  test('renewal modal contains PAT input form that posts to /api/auth', () => {
+    const expiresAt = new Date(Date.now() + 30 * 86_400_000)
+    const html = renderDashboard('', 'alice', '', expiresAt, 'info')
+    expect(html).toContain('hx-post="/api/auth"')
+    expect(html).toContain('type="password"')
+  })
 })

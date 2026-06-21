@@ -86,6 +86,20 @@ document.addEventListener('input', function(e) {
 })();
 `
 
+const SEVERITY_COLOR: Record<PatExpirySeverity, string> = {
+  info: '#388bfd',
+  notice: '#d29922',
+  warning: '#f85149',
+}
+
+function formatExpiryDate(d: Date): string {
+  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+}
+
+function daysUntilExpiry(d: Date): number {
+  return Math.ceil((d.getTime() - Date.now()) / 86_400_000)
+}
+
 const FAVICON_B64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
 
@@ -141,8 +155,8 @@ export function renderDashboard(
   cardsHtml: string,
   username: string,
   avatarUrl: string,
-  _expiresAt: Date | null = null,
-  _severity: PatExpirySeverity | null = null,
+  expiresAt: Date | null = null,
+  severity: PatExpirySeverity | null = null,
 ): string {
   return `<!DOCTYPE html><html lang="de"><head>
   <meta charset="utf-8">
@@ -178,6 +192,28 @@ export function renderDashboard(
         Abmelden
       </button>
     </form>
+    ${
+      severity !== null && expiresAt !== null
+        ? (
+            () => {
+              const color = SEVERITY_COLOR[severity]
+              const days = daysUntilExpiry(expiresAt)
+              const dateStr = formatExpiryDate(expiresAt)
+              const label = days <= 0 ? 'expired' : `in ${days} day${days === 1 ? '' : 's'}`
+              return `<button
+      onclick="document.getElementById('pat-modal').style.display='flex'"
+      title="Token expires ${label} (${dateStr})"
+      style="background:transparent;border:none;cursor:pointer;padding:2px;display:flex;
+             align-items:center;color:${color};flex-shrink:0"
+      aria-label="PAT expiry warning">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 1.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13zM7.25 4v5.25l3.5 2.1.75-1.23-2.75-1.65V4h-1.5z"/>
+      </svg>
+    </button>`
+            }
+          )()
+        : ''
+    }
   </header>
   <main style="padding:20px 24px">
     <div id="cards"
@@ -187,6 +223,47 @@ export function renderDashboard(
       ${cardsHtml}
     </div>
   </main>
+  ${
+    severity !== null && expiresAt !== null
+      ? (
+          () => {
+            const color = SEVERITY_COLOR[severity]
+            const days = daysUntilExpiry(expiresAt)
+            const dateStr = formatExpiryDate(expiresAt)
+            const label =
+              days <= 0
+                ? 'Your token has expired'
+                : `Your token expires on ${dateStr} (in ${days} day${days === 1 ? '' : 's'})`
+            return `<div id="pat-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+           align-items:center;justify-content:center"
+    onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;width:100%;
+                max-width:480px;margin:16px;padding:24px">
+      <div style="font-size:16px;font-weight:600;margin-bottom:16px">Personal Access Token</div>
+      <p style="color:${color};font-size:13px;margin:0 0 16px">${label}</p>
+      <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer"
+         style="color:#388bfd;font-size:13px;display:block;margin-bottom:20px">
+        Create a new token on GitHub →
+      </a>
+      <form hx-post="/api/auth" hx-target="body">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">
+          New Personal Access Token
+        </label>
+        <input name="pat" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" required
+               style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
+                      padding:9px 12px;color:#e6edf3;font-size:13px;font-family:monospace;
+                      outline:none;margin-bottom:12px"/>
+        <button type="submit" class="btn-primary" style="width:100%;padding:10px">
+          Renew Token
+        </button>
+      </form>
+    </div>
+  </div>`
+          }
+        )()
+      : ''
+  }
   <div id="modal"></div>
   <div id="countdown" title="Auto-Refresh Countdown"
        style="position:fixed;bottom:16px;right:16px;width:36px;height:36px;border-radius:50%;
