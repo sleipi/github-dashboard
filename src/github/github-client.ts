@@ -58,7 +58,10 @@ export function createGitHubClient(
       const j = (await res.json().catch(() => ({}))) as { message?: string }
       throw new Error(j.message ?? 'Zugriff verweigert (403)')
     }
-    if (!res.ok) throw new Error(`API-Fehler ${res.status}`)
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { message?: string }
+      throw new Error(j.message ?? `API-Fehler ${res.status}`)
+    }
     return res.json()
   }
 
@@ -158,22 +161,33 @@ export function createGitHubClient(
     },
 
     async getDependabotCount(fullName) {
+      const token = authRepo.getToken()
+      if (!token) return null
       try {
-        // Fetches up to 300 open alerts (3 pages × 100). Repos with >300 alerts
-        // will show 300 instead of the true count.
-        const pages = await Promise.all([
-          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=1`) as Promise<
-            unknown[]
-          >,
-          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=2`).catch(
-            () => [],
-          ) as Promise<unknown[]>,
-          gfetch(`/repos/${fullName}/dependabot/alerts?state=open&per_page=100&page=3`).catch(
-            () => [],
-          ) as Promise<unknown[]>,
-        ])
-        const alerts = pages.flat()
-        return Array.isArray(alerts) ? alerts.length : null
+        // Dependabot API uses cursor-based pagination via Link header — page= is not supported.
+        // Fetches up to 300 open alerts (3 pages × 100).
+        let nextUrl: string | null =
+          `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=100`
+        let total = 0
+        for (let i = 0; i < 3 && nextUrl !== null; i++) {
+          const res = await fetchFn(nextUrl, {
+            headers: {
+              Authorization: `token ${token.pat}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          })
+          if (!res.ok) {
+            const j = (await res.json().catch(() => ({}))) as { message?: string }
+            throw new Error(j.message ?? `API-Fehler ${res.status}`)
+          }
+          const alerts = (await res.json()) as unknown
+          if (!Array.isArray(alerts)) break
+          total += alerts.length
+          const link = res.headers.get('link') ?? ''
+          const next = link.match(/<([^>]+)>;\s*rel="next"/)
+          nextUrl = next ? (next[1] ?? null) : null
+        }
+        return total
       } catch {
         return null
       }

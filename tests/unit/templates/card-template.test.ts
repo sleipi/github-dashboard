@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import type { CardData } from '../../../src/services/card-service.ts'
-import { renderCard, renderCards, toCardViewModel } from '../../../src/templates/card-template.ts'
+import {
+  renderCard,
+  renderCardError,
+  renderCards,
+  toCardViewModel,
+} from '../../../src/templates/card-template.ts'
+import { DASHBOARD_CSS } from '../../../src/templates/styles.ts'
 
 const emptyCardData = (fullName: string): CardData => ({
   fullName,
@@ -111,6 +117,42 @@ describe('renderCard', () => {
     const html = renderCard(vm)
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
+
+  test('zeigt Security-Badge als "—" mit Tooltip wenn Dependabot-Zugriff verweigert (null)', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/no-dep'),
+      cache: { ...emptyCardData('alice/no-dep').cache, dependabotCount: null },
+    }
+    const html = renderCard(toCardViewModel(data))
+    expect(html).toContain('🛡')
+    expect(html).toContain('Dependabot: kein Zugriff')
+  })
+
+  test('zeigt weitere-PRs-Button wenn mehr als MAX_PRS_ON_CARD vorhanden', () => {
+    const prs = Array.from({ length: 7 }, (_, i) => ({
+      repoFullName: 'alice/busy',
+      number: i + 1,
+      title: `PR ${i + 1}`,
+      draft: false,
+      ciStatus: 'unknown' as const,
+      prUrl: `https://github.com/alice/busy/pull/${i + 1}`,
+      creator: 'dev',
+      labels: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }))
+    const data: CardData = { ...emptyCardData('alice/busy'), prs }
+    const html = renderCard(toCardViewModel(data))
+    expect(html).toContain('hx-get="/api/prs/alice/busy"')
+    expect(html).toContain('weiterer PR')
+  })
+})
+
+describe('DASHBOARD_CSS', () => {
+  test('htmx-indicator hat pointer-events:none damit unsichtbarer Overlay keine Klicks blockiert', () => {
+    const rule = DASHBOARD_CSS.match(/\.htmx-indicator\s*\{[^}]+\}/)?.[0] ?? ''
+    expect(rule).toContain('pointer-events: none')
+  })
 })
 
 describe('renderCards', () => {
@@ -126,5 +168,30 @@ describe('renderCards', () => {
     const html = renderCards(vms)
     expect(html).toContain('alice/alpha')
     expect(html).toContain('alice/beta')
+  })
+})
+
+describe('renderCardError', () => {
+  test('renders an error card containing the repo fullName and message', () => {
+    const html = renderCardError('alice/alpha', 'GitHub unavailable')
+    expect(html).toContain('alice/alpha')
+    expect(html).toContain('GitHub unavailable')
+  })
+
+  test('renders a red border on the error card', () => {
+    const html = renderCardError('alice/alpha', 'some error')
+    expect(html).toContain('#f85149')
+  })
+
+  test('escapes HTML in the error message', () => {
+    const html = renderCardError('alice/alpha', '<script>alert(1)</script>')
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('&lt;script&gt;')
+  })
+
+  test('escapes HTML in the fullName', () => {
+    const html = renderCardError('<evil>/repo', 'error')
+    expect(html).not.toContain('<evil>')
+    expect(html).toContain('&lt;evil&gt;')
   })
 })

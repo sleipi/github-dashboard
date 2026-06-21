@@ -26,8 +26,9 @@ function renderRepoRow(vm: RepoListItemViewModel): string {
      hx-post="/api/cards/${safeOwner}/${safeName}"
      hx-swap="none"
      hx-on::after-request="htmx.trigger(document.body,'cardsChanged')"
-     onclick="this.querySelector('.check').style.background = this.querySelector('.check').style.background === 'rgb(35,134,54)' ? 'transparent' : '#238636'">
-  <div class="check" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;
+     onclick="_toggleCheck(this)">
+  <div class="check" data-checked="${vm.isPinned ? '1' : '0'}"
+       style="width:16px;height:16px;border-radius:3px;flex-shrink:0;
        border:1.5px solid ${vm.isPinned ? '#238636' : '#30363d'};
        background:${vm.isPinned ? '#238636' : 'transparent'};
        display:flex;align-items:center;justify-content:center">

@@ -1,0 +1,11 @@
+- generic [ref=e3]:
+  - heading "GitHub Dashboard" [level=1] [ref=e4]
+  - generic [ref=e5]:
+    - generic [ref=e6]: Personal Access Token (classic)
+    - textbox "ghp_xxxxxxxxxxxxxxxxxxxx" [active] [ref=e7]
+    - generic [ref=e8]:
+      - text: "Benötigte Scopes:"
+      - code [ref=e9]: repo
+      - text: ·
+      - code [ref=e10]: security_events
+    - button "Mit GitHub verbinden" [ref=e11] [cursor=pointer]

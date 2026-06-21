@@ -2,6 +2,14 @@ import { escapeHtml } from './formatters.ts'
 import { DASHBOARD_CSS } from './styles.ts'
 
 const CLIENT_SCRIPT = `
+function _toggleCheck(row) {
+  var c = row.querySelector('.check');
+  var on = c.dataset.checked === '1';
+  c.dataset.checked = on ? '0' : '1';
+  c.style.background = on ? 'transparent' : '#238636';
+  c.style.borderColor = on ? '#30363d' : '#238636';
+  c.innerHTML = on ? '' : '<svg width="9" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>';
+}
 let _dragIdx = -1;
 function _clearDragTarget() {
   document.querySelectorAll('[data-card-name]').forEach(el => el.style.outline = '');
@@ -53,10 +61,11 @@ document.addEventListener('keydown', e => {
     if (modal) modal.innerHTML = '';
   }
 });
-document.getElementById('repo-search')?.addEventListener('input', function() {
-  const q = this.value.toLowerCase();
+document.addEventListener('input', function(e) {
+  if (e.target?.id !== 'repo-search') return;
+  const q = e.target.value.toLowerCase();
   document.querySelectorAll('[data-repo-name]').forEach(el => {
-    el.style.display = el.dataset.repoName.toLowerCase().includes(q) ? '' : 'none';
+    el.style.display = el.dataset.repoName.toLowerCase().includes(q) ? 'flex' : 'none';
   });
 });
 (function() {
@@ -76,11 +85,15 @@ document.getElementById('repo-search')?.addEventListener('input', function() {
 })();
 `
 
+const FAVICON_B64 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
+
 export function renderSetupPage(error?: string): string {
   return `<!DOCTYPE html><html lang="de"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GitHub Dashboard — Setup</title>
+  <link rel="icon" type="image/png" href="${FAVICON_B64}">
   <style>${DASHBOARD_CSS}</style>
 </head><body>
   <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
@@ -128,6 +141,7 @@ export function renderDashboard(cardsHtml: string, username: string, avatarUrl: 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GitHub Dashboard</title>
+  <link rel="icon" type="image/png" href="${FAVICON_B64}">
   <style>${DASHBOARD_CSS}</style>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" crossorigin="anonymous"></script>
 </head><body>

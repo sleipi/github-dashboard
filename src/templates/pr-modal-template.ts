@@ -12,9 +12,9 @@ export function renderPrModal(fullName: string, prs: PullRequest[]): string {
   const now = new Date()
   const safeFullName = escapeHtml(fullName)
   return `
-<div class="modal-overlay" style="max-width:980px;padding:48px 20px 20px"
+<div class="modal-overlay"
      onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
-  <div class="modal" style="max-width:980px" onclick="event.stopPropagation()">
+  <div class="modal" style="width:60%;max-width:none" onclick="event.stopPropagation()">
     <div style="padding:14px 20px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:10px">
       <span style="font-size:14px;font-weight:600;flex:1">
         Pull Requests &nbsp;<span style="color:#6e7681;font-weight:400">${safeFullName}</span>

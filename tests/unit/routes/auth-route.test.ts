@@ -75,4 +75,54 @@ describe('auth routes', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('POST /api/auth with empty PAT returns 400 with error message', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const routes = createAuthRoutes(repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('pat', '')
+    const req = new Request(url.href, { method: 'POST', body: form })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(req, url)
+    const body = await res.text()
+
+    expect(res.status).toBe(400)
+    expect(body).toContain('Bitte Token eingeben')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/auth returns 401 and shows error when getUser throws', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    const routes = createAuthRoutes(
+      repos.auth,
+      makeClient({
+        getUser: mock(async () => {
+          throw new Error('Token ungültig (401)')
+        }),
+      }),
+    )
+
+    const url = new URL('http://localhost:4242/api/auth')
+    const form = new FormData()
+    form.append('pat', 'ghp_badtoken')
+    const req = new Request(url.href, { method: 'POST', body: form })
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(req, url)
+    const body = await res.text()
+
+    expect(res.status).toBe(401)
+    expect(body).toContain('Token ungültig (401)')
+    expect(repos.auth.getToken()).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

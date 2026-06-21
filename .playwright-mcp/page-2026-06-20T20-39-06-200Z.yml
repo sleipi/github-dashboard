@@ -1,0 +1,11 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]: Dashboard
+    - button "Aktualisieren" [ref=e4] [cursor=pointer]
+    - button "+ Repo hinzufügen" [ref=e5] [cursor=pointer]
+    - generic [ref=e6]: testuser
+    - button "Abmelden" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - generic [ref=e11]:
+      - heading "Noch keine Repos gepinnt" [level=2] [ref=e12]
+      - paragraph [ref=e13]: Klicke auf "Repo hinzufügen" um loszulegen.

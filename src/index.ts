@@ -25,7 +25,7 @@ const routes: RouteHandler[] = [
   ...createPrRoutes(repos.pullRequests),
 ]
 
-// Test-only route: restore seeded session (only available when PLAYWRIGHT_TEST=1)
+// Test-only routes: full DB state reset (only available when PLAYWRIGHT_TEST=1)
 if (process.env.PLAYWRIGHT_TEST === '1') {
   routes.push({
     match: (url, method) => url.pathname === '/api/test/restore-session' && method === 'POST',
@@ -35,6 +35,21 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
         username: 'testuser',
         avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4',
       })
+      // Re-pin repos (INSERT OR IGNORE is idempotent) and restore canonical order
+      repos.cards.pin('alice/awesome-project')
+      repos.cards.pin('alice/another-repo')
+      repos.cards.reorder(['alice/awesome-project', 'alice/another-repo'])
+      // Refresh cachedAt so getCard() serves from DB (not GitHub) during tests
+      for (const fullName of ['alice/awesome-project', 'alice/another-repo']) {
+        const c = repos.pullRequests.getCache(fullName)
+        if (c) {
+          repos.pullRequests.upsertCache(fullName, {
+            lastCommitAt: c.lastCommitAt,
+            prTotal: c.prTotal,
+            dependabotCount: c.dependabotCount,
+          })
+        }
+      }
       return redirect('/')
     },
   })

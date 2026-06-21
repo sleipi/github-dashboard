@@ -106,3 +106,6 @@ ViewModels are computed in route handlers (not in templates) — relative timest
 - **Biome** for all linting and formatting — no ESLint, no Prettier
 - **No `Co-Authored-By: Claude` in commits**
 - Branch protection: all CI checks must pass before merge
+- **Language**: All code, tests, comments, and identifiers are written in English
+- **TDD**: Every feature and bugfix requires tests (unit and/or e2e) written before implementation — no code ships without coverage
+- **Code/Design separation**: Logic lives in services/repositories; presentation lives in templates — no business logic in templates, no HTML in services

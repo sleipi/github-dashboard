@@ -126,7 +126,7 @@ export function renderCard(vm: CardViewModel): string {
         ${vm.hasDepTrend ? `<span style="font-size:10px;color:#6e7681">${vm.depTrend}</span>` : ''}
         ${vm.depCollecting ? `<span style="font-size:10px;color:#484f58" title="Verlauf wird aufgebaut">···</span>` : ''}
       </a>`
-          : ''
+          : `<span style="color:#484f58;display:flex;align-items:center;gap:4px" title="${vm.depLabel}">🛡 —</span>`
       }
     </div>
     <div style="border-top:1px solid #21262d;padding-top:9px">
