@@ -1,5 +1,7 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
+import type { GitHubClient } from '../github/github-client.ts'
 import type { CardService } from '../services/card-service.ts'
+import { getPatExpirySeverity } from '../services/pat-expiry-service.ts'
 import {
   renderCard,
   renderCardError,
@@ -10,20 +12,52 @@ import { renderDashboard } from '../templates/page-template.ts'
 import { html, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
 
-export function createCardRoutes(cardService: CardService, authRepo: AuthRepo): RouteHandler[] {
+export function createCardRoutes(
+  cardService: CardService,
+  authRepo: AuthRepo,
+  client: GitHubClient,
+): RouteHandler[] {
   return [
-    // GET / — vollständiges Dashboard
+    // GET / — full dashboard
     {
       match: (url, method) => url.pathname === '/' && method === 'GET',
       async handle() {
-        const token = authRepo.getToken()
+        let token = authRepo.getToken()
         if (!token) return redirect('/')
+
+        // Backfill expiresAt once for existing users (fires at most once per token)
+        if (token.expiresAt === null) {
+          try {
+            const user = await client.getUser()
+            const updated = {
+              ...token,
+              username: user.login,
+              avatarUrl: user.avatarUrl,
+              expiresAt: user.expiresAt,
+            }
+            authRepo.saveToken(updated)
+            token = updated
+          } catch {
+            // Best effort — don't block dashboard load
+          }
+        }
+
         const cards = await cardService.getCards()
         const vms = cards.map(toCardViewModel)
-        return html(renderDashboard(renderCards(vms), token.username, token.avatarUrl))
+        const severity =
+          token.expiresAt !== null ? getPatExpirySeverity(token.expiresAt, new Date()) : null
+        return html(
+          renderDashboard(
+            renderCards(vms),
+            token.username,
+            token.avatarUrl,
+            token.expiresAt,
+            severity,
+          ),
+        )
       },
     },
-    // GET /api/cards — HTMX Partial für alle Cards
+    // GET /api/cards — HTMX partial for all cards
     {
       match: (url, method) => url.pathname === '/api/cards' && method === 'GET',
       async handle() {
@@ -31,7 +65,7 @@ export function createCardRoutes(cardService: CardService, authRepo: AuthRepo): 
         return html(renderCards(cards.map(toCardViewModel)))
       },
     },
-    // GET /api/card/:owner/:repo — einzelne Card
+    // GET /api/card/:owner/:repo — single card
     {
       match: (url, method) => method === 'GET' && /^\/api\/card\/[^/]+\/[^/]+$/.test(url.pathname),
       async handle(_req, url) {
@@ -46,7 +80,7 @@ export function createCardRoutes(cardService: CardService, authRepo: AuthRepo): 
         }
       },
     },
-    // POST /api/cards/:owner/:repo — Pin/Unpin toggle
+    // POST /api/cards/:owner/:repo — pin/unpin toggle
     {
       match: (url, method) =>
         method === 'POST' && /^\/api\/cards\/[^/]+\/[^/]+$/.test(url.pathname),

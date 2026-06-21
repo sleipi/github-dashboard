@@ -17,12 +17,16 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   }
 }
 
+function makeCardService(repos: ReturnType<typeof createSqliteRepos>) {
+  return createCardService(repos, makeClient())
+}
+
 describe('card routes', () => {
   test('POST /api/cards/owner/repo toggles pin and returns HX-Trigger', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards/alice/alpha')
     const route = routes.find((r) => r.match(url, 'POST'))
@@ -41,7 +45,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -65,7 +69,7 @@ describe('card routes', () => {
       expiresAt: null,
     })
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -86,7 +90,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     // no token saved
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -105,7 +109,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.cards.pin('alice/alpha')
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/card/alice/alpha')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -131,7 +135,7 @@ describe('card routes', () => {
         }),
       }),
     )
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/card/alice/alpha')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -153,7 +157,7 @@ describe('card routes', () => {
     repos.cards.pin('alice/alpha')
     repos.cards.pin('alice/beta')
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth)
+    const routes = createCardRoutes(service, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards/reorder')
     const route = routes.find((r) => r.match(url, 'POST'))
@@ -169,6 +173,55 @@ describe('card routes', () => {
     const pinned = repos.cards.getPinned()
     expect(pinned[0]?.fullName).toBe('alice/beta')
     expect(pinned[1]?.fullName).toBe('alice/alpha')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET / calls getUser once to backfill expiresAt when it is null', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const expiresAt = new Date('2026-12-31T00:00:00.000Z')
+    const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt }))
+    const client = makeClient({ getUser })
+    const service = makeCardService(repos)
+    const routes = createCardRoutes(service, repos.auth, client)
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(getUser).toHaveBeenCalledTimes(1)
+    expect(repos.auth.getToken()?.expiresAt?.toISOString()).toBe('2026-12-31T00:00:00.000Z')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET / skips backfill when expiresAt is already set', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({
+      pat: 'ghp_test',
+      username: 'alice',
+      avatarUrl: '',
+      expiresAt: new Date('2026-12-31T00:00:00.000Z'),
+    })
+
+    const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: new Date() }))
+    const client = makeClient({ getUser })
+    const service = makeCardService(repos)
+    const routes = createCardRoutes(service, repos.auth, client)
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(getUser).not.toHaveBeenCalled()
 
     repos.close()
     cleanupTempDir(dir)

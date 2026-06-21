@@ -20,7 +20,7 @@ const cardService = createCardService(repos, client)
 
 const routes: RouteHandler[] = [
   ...createAuthRoutes(repos.auth, client),
-  ...createCardRoutes(cardService, repos.auth),
+  ...createCardRoutes(cardService, repos.auth, client),
   ...createModalRoutes(cardService, repos.cards),
   ...createPrRoutes(repos.pullRequests),
 ]

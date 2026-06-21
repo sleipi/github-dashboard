@@ -1,3 +1,4 @@
+import type { PatExpirySeverity } from '../services/pat-expiry-service.ts'
 import { escapeHtml } from './formatters.ts'
 import { DASHBOARD_CSS } from './styles.ts'
 
@@ -136,7 +137,13 @@ export function renderSetupPage(error?: string): string {
 </body></html>`
 }
 
-export function renderDashboard(cardsHtml: string, username: string, avatarUrl: string): string {
+export function renderDashboard(
+  cardsHtml: string,
+  username: string,
+  avatarUrl: string,
+  _expiresAt: Date | null = null,
+  _severity: PatExpirySeverity | null = null,
+): string {
   return `<!DOCTYPE html><html lang="de"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
