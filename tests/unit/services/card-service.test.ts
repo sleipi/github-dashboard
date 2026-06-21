@@ -140,7 +140,7 @@ describe('CardService', () => {
     expect(getCiStatus).toHaveBeenCalledTimes(3)
     const storedPrs = repos.pullRequests.getPrs('alice/alpha')
     expect(storedPrs).toHaveLength(4)
-    expect(storedPrs[3]?.ciStatus).toBe('unknown')
+    expect(storedPrs.find((pr) => pr.number === 4)?.ciStatus).toBe('unknown')
 
     repos.close()
     cleanupTempDir(dir)

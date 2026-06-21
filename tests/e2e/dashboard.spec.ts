@@ -30,8 +30,10 @@ test.describe('Dashboard', () => {
 
   test('zeigt Dependabot-Alert-Anzahl', async ({ page }) => {
     await page.goto('/')
-    // 3 aktuelle Alerts, Trend: -2 (von 5 auf 3)
-    await expect(page.getByText('3')).toBeVisible()
+    // 3 aktuelle Alerts — über title-Attribut suchen, da '3' auch in PR-Nummern vorkommt
+    await expect(
+      page.locator('[data-card-name="alice/awesome-project"] [title="3 Alerts"]'),
+    ).toBeVisible()
   })
 
   test('"Repo hinzufügen" öffnet Modal', async ({ page }) => {

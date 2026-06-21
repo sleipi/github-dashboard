@@ -56,7 +56,9 @@ export function createSqlitePrRepo(db: Database): PrRepo {
 
     getPrs(fullName) {
       return db
-        .query<PrRow, [string]>('SELECT * FROM pull_requests WHERE repo_full_name = ?')
+        .query<PrRow, [string]>(
+          'SELECT * FROM pull_requests WHERE repo_full_name = ? ORDER BY number DESC',
+        )
         .all(fullName)
         .map((row) => ({
           repoFullName: row.repo_full_name,
