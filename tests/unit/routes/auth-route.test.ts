@@ -6,7 +6,11 @@ import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
 
 function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   return {
-    getUser: mock(async () => ({ login: 'alice', avatarUrl: 'https://x.com/a.png' })),
+    getUser: mock(async () => ({
+      login: 'alice',
+      avatarUrl: 'https://x.com/a.png',
+      expiresAt: null,
+    })),
     getRepos: mock(async () => []),
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),

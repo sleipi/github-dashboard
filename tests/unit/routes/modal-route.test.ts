@@ -21,7 +21,7 @@ const makeRepo = (fullName: string): GitHubRepo => {
 
 function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   return {
-    getUser: mock(async () => ({ login: 'alice', avatarUrl: '' })),
+    getUser: mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: null })),
     getRepos: mock(async () => [makeRepo('alice/alpha'), makeRepo('alice/beta')]),
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),

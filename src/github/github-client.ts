@@ -5,6 +5,7 @@ import type { CiStatus, Label } from '../db/types.ts'
 export type GitHubUser = {
   readonly login: string
   readonly avatarUrl: string
+  readonly expiresAt: Date | null
 }
 
 export type GitHubRepo = {
@@ -67,8 +68,27 @@ export function createGitHubClient(
 
   return {
     async getUser() {
-      const d = (await gfetch('/user')) as { login: string; avatar_url: string }
-      return { login: d.login, avatarUrl: d.avatar_url }
+      const token = authRepo.getToken()
+      if (!token) throw new Error('Not authenticated')
+      const res = await fetchFn('https://api.github.com/user', {
+        headers: {
+          Authorization: `token ${token.pat}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      })
+      if (res.status === 401) throw new Error('Token ungültig (401)')
+      if (res.status === 403) {
+        const j = (await res.json().catch(() => ({}))) as { message?: string }
+        throw new Error(j.message ?? 'Zugriff verweigert (403)')
+      }
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { message?: string }
+        throw new Error(j.message ?? `API-Fehler ${res.status}`)
+      }
+      const d = (await res.json()) as { login: string; avatar_url: string }
+      const expiryHeader = res.headers.get('GitHub-Authentication-Token-Expiration')
+      const expiresAt = expiryHeader ? new Date(expiryHeader) : null
+      return { login: d.login, avatarUrl: d.avatar_url, expiresAt }
     },
 
     async getRepos() {

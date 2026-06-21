@@ -441,6 +441,52 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
+  test('getUser returns expiresAt when GitHub-Authentication-Token-Expiration header present', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(
+      async () =>
+        new Response(JSON.stringify({ login: 'alice', avatar_url: 'https://x.com/a.png' }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'GitHub-Authentication-Token-Expiration': '2026-12-31 21:01:12 UTC',
+          },
+        }),
+    )
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const user = await client.getUser()
+    expect(user.expiresAt).toBeInstanceOf(Date)
+    expect(user.expiresAt?.toISOString()).toBe('2026-12-31T21:01:12.000Z')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getUser returns null expiresAt when header is absent', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(
+      async () =>
+        new Response(JSON.stringify({ login: 'alice', avatar_url: 'https://x.com/a.png' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const user = await client.getUser()
+    expect(user.expiresAt).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   // gfetch error handling
   test('gfetch throws when no auth token is stored', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
