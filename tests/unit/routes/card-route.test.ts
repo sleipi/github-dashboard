@@ -1,7 +1,9 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
+import type { RefreshHint } from '../../../src/db/types.ts'
 import type { GitHubClient } from '../../../src/github/github-client.ts'
 import { createCardRoutes } from '../../../src/routes/card-route.ts'
+import type { ActivityService } from '../../../src/services/activity-service.ts'
 import { createCardService } from '../../../src/services/card-service.ts'
 import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
 
@@ -18,6 +20,13 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   }
 }
 
+function makeActivityService(overrides: Partial<ActivityService> = {}): ActivityService {
+  return {
+    sync: mock(async () => ({ activities: [], refreshNeeded: new Set<RefreshHint>() })),
+    ...overrides,
+  }
+}
+
 function makeCardService(repos: ReturnType<typeof createSqliteRepos>) {
   return createCardService(repos, makeClient())
 }
@@ -27,7 +36,7 @@ describe('card routes', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards/alice/alpha')
     const route = routes.find((r) => r.match(url, 'POST'))
@@ -46,7 +55,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -70,7 +79,7 @@ describe('card routes', () => {
       expiresAt: null,
     })
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -91,7 +100,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     // no token saved
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -110,7 +119,7 @@ describe('card routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.cards.pin('alice/alpha')
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/card/alice/alpha')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -136,7 +145,10 @@ describe('card routes', () => {
         }),
       }),
     )
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const activityService = makeActivityService({
+      sync: mock(async () => ({ activities: [], refreshNeeded: new Set<RefreshHint>(['prs']) })),
+    })
+    const routes = createCardRoutes(service, activityService, repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/card/alice/alpha')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -158,7 +170,7 @@ describe('card routes', () => {
     repos.cards.pin('alice/alpha')
     repos.cards.pin('alice/beta')
     const service = createCardService(repos, makeClient())
-    const routes = createCardRoutes(service, repos.auth, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
 
     const url = new URL('http://localhost:4242/api/cards/reorder')
     const route = routes.find((r) => r.match(url, 'POST'))
@@ -193,7 +205,7 @@ describe('card routes', () => {
     const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt }))
     const client = makeClient({ getUser })
     const service = makeCardService(repos)
-    const routes = createCardRoutes(service, repos.auth, client)
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, client)
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -215,7 +227,7 @@ describe('card routes', () => {
     const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: null }))
     const client = makeClient({ getUser })
     const service = makeCardService(repos)
-    const routes = createCardRoutes(service, repos.auth, client)
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, client)
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -241,7 +253,7 @@ describe('card routes', () => {
     const getUser = mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: new Date() }))
     const client = makeClient({ getUser })
     const service = makeCardService(repos)
-    const routes = createCardRoutes(service, repos.auth, client)
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, client)
 
     const url = new URL('http://localhost:4242/')
     const route = routes.find((r) => r.match(url, 'GET'))

@@ -1,6 +1,7 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
 import type { GitHubClient } from '../github/github-client.ts'
-import type { CardData, CardService } from '../services/card-service.ts'
+import type { ActivityService } from '../services/activity-service.ts'
+import type { CardService } from '../services/card-service.ts'
 import { getPatExpirySeverity } from '../services/pat-expiry-service.ts'
 import {
   renderCard,
@@ -12,8 +13,19 @@ import { renderDashboard } from '../templates/page-template.ts'
 import { html, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
 
+async function buildCardVm(
+  fullName: string,
+  cardService: CardService,
+  activityService: ActivityService,
+) {
+  const syncResult = await activityService.sync(fullName)
+  const cardData = await cardService.getCard(fullName, syncResult.refreshNeeded)
+  return toCardViewModel(cardData, syncResult.activities)
+}
+
 export function createCardRoutes(
   cardService: CardService,
+  activityService: ActivityService,
   authRepo: AuthRepo,
   client: GitHubClient,
 ): RouteHandler[] {
@@ -25,7 +37,6 @@ export function createCardRoutes(
         let token = authRepo.getToken()
         if (!token) return redirect('/')
 
-        // Backfill expiresAt once for existing users (fires at most once per token)
         if (token.expiresAt === undefined) {
           try {
             const user = await client.getUser()
@@ -38,20 +49,21 @@ export function createCardRoutes(
             authRepo.saveToken(updated)
             token = updated
           } catch {
-            // Best effort — don't block dashboard load
+            /* best effort */
           }
         }
 
         const pinned = cardService.getPinned()
         const results = await Promise.allSettled(
-          pinned.map((fullName) =>
-            cardService.getCard(fullName, new Set(['prs', 'commits', 'ci'])),
-          ),
+          pinned.map((fullName) => buildCardVm(fullName, cardService, activityService)),
         )
-        const cards = results
-          .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
+        const vms = results
+          .filter(
+            (r): r is PromiseFulfilledResult<ReturnType<typeof toCardViewModel>> =>
+              r.status === 'fulfilled',
+          )
           .map((r) => r.value)
-        const vms = cards.map((data) => toCardViewModel(data, []))
+
         const severity =
           token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
         return html(
@@ -71,14 +83,15 @@ export function createCardRoutes(
       async handle() {
         const pinned = cardService.getPinned()
         const results = await Promise.allSettled(
-          pinned.map((fullName) =>
-            cardService.getCard(fullName, new Set(['prs', 'commits', 'ci'])),
-          ),
+          pinned.map((fullName) => buildCardVm(fullName, cardService, activityService)),
         )
-        const cards = results
-          .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
+        const vms = results
+          .filter(
+            (r): r is PromiseFulfilledResult<ReturnType<typeof toCardViewModel>> =>
+              r.status === 'fulfilled',
+          )
           .map((r) => r.value)
-        return html(renderCards(cards.map((data) => toCardViewModel(data, []))))
+        return html(renderCards(vms))
       },
     },
     // GET /api/card/:owner/:repo — single card
@@ -88,8 +101,8 @@ export function createCardRoutes(
         const [, , , owner, repo] = url.pathname.split('/')
         const fullName = `${owner}/${repo}`
         try {
-          const data = await cardService.getCard(fullName, new Set(['prs', 'commits', 'ci']))
-          return html(renderCard(toCardViewModel(data, [])))
+          const vm = await buildCardVm(fullName, cardService, activityService)
+          return html(renderCard(vm))
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Fehler beim Laden'
           return html(renderCardError(fullName, msg))
