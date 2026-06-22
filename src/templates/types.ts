@@ -95,3 +95,16 @@ export type ActivityModalViewModel = {
   readonly hasActivities: boolean
   readonly activities: readonly ActivityModalItem[]
 }
+
+export type ExpiryBannerViewModel = {
+  readonly color: string
+  readonly buttonTitle: string
+  readonly modalLabel: string
+}
+
+export type DashboardViewModel = {
+  readonly cardsHtml: string
+  readonly username: string
+  readonly avatarUrl: string | null
+  readonly expiry: ExpiryBannerViewModel | null
+}

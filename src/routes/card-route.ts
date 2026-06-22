@@ -9,7 +9,7 @@ import {
   renderCards,
   toCardViewModel,
 } from '../templates/card-template.ts'
-import { renderDashboard } from '../templates/page-template.ts'
+import { renderDashboard, toDashboardViewModel } from '../templates/page-template.ts'
 import { html, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
 
@@ -68,11 +68,13 @@ export function createCardRoutes(
           token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
         return html(
           renderDashboard(
-            renderCards(vms),
-            token.username,
-            token.avatarUrl,
-            token.expiresAt instanceof Date ? token.expiresAt : null,
-            severity,
+            toDashboardViewModel(
+              renderCards(vms),
+              token.username,
+              token.avatarUrl,
+              token.expiresAt instanceof Date ? token.expiresAt : null,
+              severity,
+            ),
           ),
         )
       },

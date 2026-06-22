@@ -1,6 +1,7 @@
 import type { PatExpirySeverity } from '../services/pat-expiry-service.ts'
 import { escapeHtml } from './formatters.ts'
 import { DASHBOARD_CSS } from './styles.ts'
+import type { DashboardViewModel, ExpiryBannerViewModel } from './types.ts'
 
 const CLIENT_SCRIPT = `
 function _toggleCheck(row) {
@@ -100,6 +101,36 @@ function daysUntilExpiry(d: Date): number {
   return Math.ceil((d.getTime() - Date.now()) / 86_400_000)
 }
 
+export function toDashboardViewModel(
+  cardsHtml: string,
+  username: string,
+  avatarUrl: string,
+  expiresAt: Date | null,
+  severity: PatExpirySeverity | null,
+): DashboardViewModel {
+  let expiry: ExpiryBannerViewModel | null = null
+  if (expiresAt !== null && severity !== null) {
+    const color = SEVERITY_COLOR[severity]
+    const days = daysUntilExpiry(expiresAt)
+    const dateStr = formatExpiryDate(expiresAt)
+    const daysLabel = days <= 0 ? 'expired' : `in ${days} day${days === 1 ? '' : 's'}`
+    expiry = {
+      color,
+      buttonTitle: `Token ${daysLabel} (${dateStr})`,
+      modalLabel:
+        days <= 0
+          ? 'Your token has expired'
+          : `Your token expires on ${dateStr} (in ${days} day${days === 1 ? '' : 's'})`,
+    }
+  }
+  return {
+    cardsHtml,
+    username,
+    avatarUrl: avatarUrl || null,
+    expiry,
+  }
+}
+
 const FAVICON_B64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
 
@@ -151,13 +182,7 @@ export function renderSetupPage(error?: string): string {
 </body></html>`
 }
 
-export function renderDashboard(
-  cardsHtml: string,
-  username: string,
-  avatarUrl: string,
-  expiresAt: Date | null = null,
-  severity: PatExpirySeverity | null = null,
-): string {
+export function renderDashboard(vm: DashboardViewModel): string {
   return `<!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -185,8 +210,8 @@ export function renderDashboard(
             hx-get="/api/modal/repos" hx-target="#modal" hx-swap="innerHTML">
       + Add repo
     </button>
-    ${avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(username)}" width="24" height="24" style="border-radius:50%;flex-shrink:0">` : ''}
-    <span style="font-size:13px;color:#8b949e">${escapeHtml(username)}</span>
+    ${vm.avatarUrl ? `<img src="${escapeHtml(vm.avatarUrl)}" alt="${escapeHtml(vm.username)}" width="24" height="24" style="border-radius:50%;flex-shrink:0">` : ''}
+    <span style="font-size:13px;color:#8b949e">${escapeHtml(vm.username)}</span>
     <form method="POST" action="/api/auth" style="margin:0">
       <input type="hidden" name="_method" value="DELETE">
       <button type="submit"
@@ -195,25 +220,17 @@ export function renderDashboard(
       </button>
     </form>
     ${
-      severity !== null && expiresAt !== null
-        ? (
-            () => {
-              const color = SEVERITY_COLOR[severity]
-              const days = daysUntilExpiry(expiresAt)
-              const dateStr = formatExpiryDate(expiresAt)
-              const label = days <= 0 ? 'expired' : `in ${days} day${days === 1 ? '' : 's'}`
-              return `<button
+      vm.expiry
+        ? `<button
       onclick="document.getElementById('pat-modal').style.display='flex'"
-      title="Token expires ${label} (${dateStr})"
+      title="${vm.expiry.buttonTitle}"
       style="background:transparent;border:none;cursor:pointer;padding:2px;display:flex;
-             align-items:center;color:${color};flex-shrink:0"
+             align-items:center;color:${vm.expiry.color};flex-shrink:0"
       aria-label="PAT expiry warning">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 1.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13zM7.25 4v5.25l3.5 2.1.75-1.23-2.75-1.65V4h-1.5z"/>
       </svg>
     </button>`
-            }
-          )()
         : ''
     }
   </header>
@@ -222,28 +239,19 @@ export function renderDashboard(
          hx-get="/api/cards"
          hx-trigger="every 10s, cardsChanged from:body"
          hx-swap="morph:innerHTML">
-      ${cardsHtml}
+      ${vm.cardsHtml}
     </div>
   </main>
   ${
-    severity !== null && expiresAt !== null
-      ? (
-          () => {
-            const color = SEVERITY_COLOR[severity]
-            const days = daysUntilExpiry(expiresAt)
-            const dateStr = formatExpiryDate(expiresAt)
-            const label =
-              days <= 0
-                ? 'Your token has expired'
-                : `Your token expires on ${dateStr} (in ${days} day${days === 1 ? '' : 's'})`
-            return `<div id="pat-modal"
+    vm.expiry
+      ? `<div id="pat-modal"
     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
            align-items:center;justify-content:center"
     onclick="if(event.target===this)this.style.display='none'">
     <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;width:100%;
                 max-width:480px;margin:16px;padding:24px">
       <div style="font-size:16px;font-weight:600;margin-bottom:16px">Personal Access Token</div>
-      <p style="color:${color};font-size:13px;margin:0 0 16px">${label}</p>
+      <p style="color:${vm.expiry.color};font-size:13px;margin:0 0 16px">${vm.expiry.modalLabel}</p>
       <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer"
          style="color:#388bfd;font-size:13px;display:block;margin-bottom:20px">
         Create a new token on GitHub →
@@ -262,8 +270,6 @@ export function renderDashboard(
       </form>
     </div>
   </div>`
-          }
-        )()
       : ''
   }
   <div id="modal"></div>
