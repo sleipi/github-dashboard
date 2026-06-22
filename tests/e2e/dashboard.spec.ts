@@ -33,6 +33,8 @@ test.describe('Activity strip', () => {
     await card.locator('button', { hasText: /more activities/ }).click()
     await expect(page.locator('#modal .modal-overlay')).toBeVisible()
     await expect(page.locator('#modal').getByText('Activity')).toBeVisible()
+    const modalLinks = page.locator('#modal a[href*="github.com"]')
+    await expect(modalLinks).toHaveCount(9)
   })
 
   test('new PR has no highlight when older than 6h', async ({ page }) => {
