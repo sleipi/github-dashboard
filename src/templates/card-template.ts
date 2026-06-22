@@ -100,7 +100,7 @@ export function renderCard(vm: CardViewModel): string {
   const safeFullName = escapeHtml(vm.fullName)
   const loadingId = `ld-${vm.fullName.replace(/[^a-z0-9]/gi, '-')}`
   return `
-<div class="card" draggable="true" data-card-name="${safeFullName}"
+<div class="card" id="card-${safeOwner}-${safeName}" draggable="true" data-card-name="${safeFullName}"
      style="position:relative;border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
   <div id="${loadingId}" class="htmx-indicator"
        style="position:absolute;inset:0;background:rgba(22,27,34,0.88);z-index:10;

@@ -161,11 +161,13 @@ export function renderDashboard(
   return `<!DOCTYPE html><html lang="de"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
   <title>GitHub Dashboard</title>
   <link rel="icon" type="image/png" href="${FAVICON_B64}">
   <style>${DASHBOARD_CSS}</style>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" crossorigin="anonymous"></script>
-</head><body>
+  <script src="https://unpkg.com/idiomorph@0.7.4/dist/idiomorph-ext.js" crossorigin="anonymous"></script>
+</head><body hx-ext="morph">
   <header style="background:#161b22;border-bottom:1px solid #30363d;height:56px;
                  display:flex;align-items:center;padding:0 20px;gap:10px;
                  position:sticky;top:0;z-index:100">
@@ -175,7 +177,7 @@ export function renderDashboard(
     <span style="font-size:15px;font-weight:600">Dashboard</span>
     <div style="flex:1"></div>
     <button class="btn-ghost"
-            hx-get="/api/cards" hx-target="#cards" hx-swap="innerHTML"
+            hx-get="/api/cards" hx-target="#cards" hx-swap="morph:innerHTML"
             hx-on::after-request="htmx.trigger(document.body,'cardsChanged')">
       Aktualisieren
     </button>
@@ -219,7 +221,7 @@ export function renderDashboard(
     <div id="cards"
          hx-get="/api/cards"
          hx-trigger="every 10s, cardsChanged from:body"
-         hx-swap="innerHTML">
+         hx-swap="morph:innerHTML">
       ${cardsHtml}
     </div>
   </main>
