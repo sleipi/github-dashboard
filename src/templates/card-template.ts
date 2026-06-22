@@ -161,7 +161,7 @@ export function renderCard(vm: CardViewModel): string {
           ? `
       <button hx-get="/api/activity/${safeOwner}/${safeName}"
               hx-target="#modal" hx-swap="innerHTML"
-              style="font-size:10px;color:#2f81f7;padding:2px 0;text-align:left;background:transparent;border:none;cursor:pointer;font-family:inherit">
+              style="font-size:10px;color:#2f81f7;padding:2px 0;text-align:center;width:100%;background:transparent;border:none;cursor:pointer;font-family:inherit">
         · ${vm.activityMore} more activities
       </button>`
           : ''
@@ -241,7 +241,7 @@ export function renderCards(vms: CardViewModel[]): string {
       <p style="margin:0 0 24px">Klicke auf "Repo hinzufügen" um loszulegen.</p>
     </div>`
   }
-  return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
     ${vms.map(renderCard).join('')}
   </div>`
 }

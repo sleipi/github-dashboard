@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import type { Activity } from '../../../src/db/types.ts'
 import type { CardData } from '../../../src/services/card-service.ts'
 import {
   renderCard,
@@ -168,6 +169,34 @@ describe('renderCards', () => {
     const html = renderCards(vms)
     expect(html).toContain('alice/alpha')
     expect(html).toContain('alice/beta')
+  })
+
+  test('renderCards uses auto-fill grid', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    const html = renderCards([vm])
+    expect(html).toContain('repeat(auto-fill,minmax(340px,1fr))')
+  })
+
+  test('activity more button is centred', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, prTotal: 0 },
+    }
+    // 6 activities so activityMore > 0
+    const activities: Activity[] = Array.from({ length: 6 }, (_, i) => ({
+      id: i + 1,
+      repoFullName: 'alice/alpha',
+      eventType: 'pr_merged' as const,
+      actor: '@bob',
+      subject: `merged #${i + 1}`,
+      linkUrl: `https://github.com/alice/alpha/pull/${i + 1}`,
+      occurredAt: new Date(),
+      recordedAt: new Date(),
+      githubEventId: `evt_${i + 1}`,
+    }))
+    const vm = toCardViewModel(data, activities)
+    const html = renderCard(vm)
+    expect(html).toContain('text-align:center')
   })
 })
 
