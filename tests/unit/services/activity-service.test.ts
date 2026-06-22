@@ -180,7 +180,7 @@ describe('ActivityService', () => {
     cleanupTempDir(dir)
   })
 
-  test('sync maps PushEvent on main to push activity and adds commits+ci hints', async () => {
+  test('sync emits commits+ci hints for PushEvent on main but records no activity', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
     cleanup.push(dir)
     const repos = createSqliteRepos(dbPath)
@@ -209,8 +209,8 @@ describe('ActivityService', () => {
 
     expect(result.refreshNeeded.has('commits')).toBe(true)
     expect(result.refreshNeeded.has('ci')).toBe(true)
-    expect(result.activities[0]?.eventType).toBe('push')
-    expect(result.activities[0]?.subject).toBe('pushed 3 commits to main')
+    // No activity record — push events are suppressed from the strip
+    expect(result.activities).toHaveLength(0)
 
     repos.close()
     cleanupTempDir(dir)

@@ -158,23 +158,12 @@ function mapEvents(
         githubEventId: event.id,
       })
     } else if (event.type === 'PushEvent') {
-      const p = event.payload as { ref: string; size: number; before: string; head: string }
+      const p = event.payload as { ref: string; before: string; head: string }
       const branch = p.ref.replace('refs/heads/', '')
       if (branch !== 'main' && branch !== 'master') continue
       hints.add('commits')
       hints.add('ci')
-      const count = p.size
-      const compareUrl = `https://github.com/${fullName}/compare/${p.before}...${p.head}`
-      activities.push({
-        repoFullName: fullName,
-        eventType: 'push',
-        actor,
-        subject: `pushed ${count} commit${count === 1 ? '' : 's'} to ${branch}`,
-        linkUrl: compareUrl,
-        occurredAt,
-        recordedAt: now,
-        githubEventId: event.id,
-      })
+      // push events not recorded — too noisy for the activity strip
     }
   }
 
