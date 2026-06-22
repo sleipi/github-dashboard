@@ -116,7 +116,7 @@ export function toDashboardViewModel(
     const daysLabel = days <= 0 ? 'expired' : `in ${days} day${days === 1 ? '' : 's'}`
     expiry = {
       color,
-      buttonTitle: `Token ${daysLabel} (${dateStr})`,
+      buttonTitle: `Token expires ${daysLabel} (${dateStr})`,
       modalLabel:
         days <= 0
           ? 'Your token has expired'
