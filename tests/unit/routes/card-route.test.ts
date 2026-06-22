@@ -265,4 +265,29 @@ describe('card routes', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('GET /api/card/owner/repo always calls getPrs regardless of empty refreshNeeded', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const getPrs = mock(async () => [])
+    const client = makeClient({ getPrs })
+    const service = createCardService(repos, client)
+    // Activity service returns empty refreshNeeded (simulates cached events / 304)
+    const activityService = makeActivityService({
+      sync: mock(async () => ({ activities: [], refreshNeeded: new Set<RefreshHint>() })),
+    })
+    const routes = createCardRoutes(service, activityService, repos.auth, client)
+
+    const url = new URL('http://localhost:4242/api/card/alice/alpha')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    // getPrs must be called even though refreshNeeded was empty
+    expect(getPrs).toHaveBeenCalledTimes(1)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

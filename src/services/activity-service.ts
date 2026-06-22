@@ -4,7 +4,7 @@ import type { Activity, ActivityEventType, RefreshHint } from '../db/types.ts'
 import type { GitHubClient } from '../github/github-client.ts'
 
 const DEP_TTL_MS = 5 * 60_000 // 5 minutes
-const HARD_TTL_MS = 10 * 60_000 // 10 minutes — force full refresh if events unseen
+const HARD_TTL_MS = 3 * 60_000 // 3 minutes — force full refresh if events unseen
 
 export type SyncResult = {
   readonly activities: readonly Activity[]

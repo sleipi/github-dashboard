@@ -101,10 +101,15 @@ export function createCardRoutes(
         const [, , , owner, repo] = url.pathname.split('/')
         const fullName = `${owner}/${repo}`
         try {
-          const vm = await buildCardVm(fullName, cardService, activityService)
+          const syncResult = await activityService.sync(fullName)
+          const hints = new Set(syncResult.refreshNeeded)
+          hints.add('prs')
+          hints.add('ci')
+          const cardData = await cardService.getCard(fullName, hints)
+          const vm = toCardViewModel(cardData, syncResult.activities)
           return html(renderCard(vm))
         } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Fehler beim Laden'
+          const msg = e instanceof Error ? e.message : 'Error loading card'
           return html(renderCardError(fullName, msg))
         }
       },
