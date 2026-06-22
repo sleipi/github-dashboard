@@ -383,9 +383,9 @@ test.describe('Dashboard', () => {
 
   test('zeigt "+ weiterer PR"-Button wenn mehr als 6 PRs vorhanden sind', async ({ page }) => {
     await page.goto('/')
-    // 7 PRs geseedet, MAX_PRS_ON_CARD=6 → 1 Overflow
+    // 7 PRs geseedet, MAX_PRS_ON_CARD=5 → 2 Overflow
     await expect(
-      page.locator('[data-card-name="alice/awesome-project"]').getByText('+ 1 weiterer PR'),
+      page.locator('[data-card-name="alice/awesome-project"]').getByText('+ 2 weitere PRs'),
     ).toBeVisible()
   })
 
@@ -507,7 +507,7 @@ test.describe('Dashboard', () => {
     )
     await page
       .locator('[data-card-name="alice/awesome-project"]')
-      .getByText('+ 1 weiterer PR')
+      .getByText('+ 2 weitere PRs')
       .click()
     await modalPromise
     // Modal-Header und der Overflow-PR (nicht auf der Card sichtbar) prüfen
@@ -544,14 +544,21 @@ test.describe('Dashboard', () => {
 
   test('zeigt Leerstate wenn alle Repos entfernt wurden', async ({ page }) => {
     await page.goto('/')
+
+    // Unpin first card and wait for all cardsChanged HTMX refreshes to settle
     await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Entfernen').click()
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).not.toBeVisible({
       timeout: 5000,
     })
+
+    // Unpin second card and wait for all cardsChanged HTMX refreshes to settle
     await page.locator('[data-card-name="alice/another-repo"]').getByTitle('Entfernen').click()
+    await page.waitForLoadState('networkidle')
     await expect(page.locator('[data-card-name="alice/another-repo"]')).not.toBeVisible({
       timeout: 5000,
     })
+
     await expect(page.getByText('Noch keine Repos gepinnt')).toBeVisible()
   })
 })
