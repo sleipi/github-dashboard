@@ -12,6 +12,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
       expiresAt: null,
     })),
     getRepos: mock(async () => []),
+    searchRepos: mock(async () => []),
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),
     getCiStatus: mock(async () => 'unknown' as const),

@@ -90,10 +90,10 @@ describe('renderRepoModal', () => {
     expect(html).toContain('Privat')
   })
 
-  test('begrenzt Ausgabe auf 100 Repos', () => {
+  test('renders all repos without a cap', () => {
     const repos = Array.from({ length: 150 }, (_, i) => makeRepo(`alice/repo-${i}`))
     const html = renderRepoModal(repos, new Set())
     const matches = html.match(/data-repo-name=/g) ?? []
-    expect(matches.length).toBe(100)
+    expect(matches.length).toBe(150)
   })
 })

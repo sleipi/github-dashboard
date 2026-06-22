@@ -23,6 +23,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   return {
     getUser: mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: null })),
     getRepos: mock(async () => [makeRepo('alice/alpha'), makeRepo('alice/beta')]),
+    searchRepos: mock(async () => []),
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),
     getCiStatus: mock(async () => 'unknown' as const),
@@ -37,7 +38,7 @@ describe('modal routes', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards)
+    const routes = createModalRoutes(service, repos.cards, makeClient())
 
     const url = new URL('http://localhost:4242/api/modal/repos')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -59,7 +60,7 @@ describe('modal routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.cards.pin('alice/alpha')
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards)
+    const routes = createModalRoutes(service, repos.cards, makeClient())
 
     const url = new URL('http://localhost:4242/api/modal/repos')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -77,12 +78,55 @@ describe('modal routes', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards)
+    const routes = createModalRoutes(service, repos.cards, makeClient())
 
     const otherUrl = new URL('http://localhost:4242/api/modal/other')
     expect(routes.some((r) => r.match(otherUrl, 'GET'))).toBe(false)
     const correctUrl = new URL('http://localhost:4242/api/modal/repos')
     expect(routes.some((r) => r.match(correctUrl, 'POST'))).toBe(false)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/repos/search with q>=2 calls searchRepos and returns HTML rows', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    const searchRepos = mock(async () => [makeRepo('jtl-software/old-archive')])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }))
+
+    const url = new URL('http://localhost:4242/api/repos/search?q=old')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(searchRepos).toHaveBeenCalledWith('old')
+    expect(body).toContain('jtl-software/old-archive')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/repos/search with q<2 falls back to getAllRepos', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    const getRepos = mock(async () => [makeRepo('alice/alpha')])
+    const searchRepos = mock(async () => [])
+    const service = createCardService(repos, makeClient({ getRepos }))
+    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }))
+
+    const url = new URL('http://localhost:4242/api/repos/search?q=a')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    expect(res.status).toBe(200)
+    expect(searchRepos).not.toHaveBeenCalled()
+    expect(body).toContain('alice/alpha')
 
     repos.close()
     cleanupTempDir(dir)

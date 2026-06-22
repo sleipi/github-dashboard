@@ -220,6 +220,46 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
+  test('searchRepos maps GitHub Search API items to GitHubRepo', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = makeJsonFetch({
+      '/search/repositories': {
+        total_count: 1,
+        items: [
+          {
+            full_name: 'jtl-software/old-repo',
+            name: 'old-repo',
+            owner: { login: 'jtl-software' },
+            private: true,
+            language: 'Go',
+            stargazers_count: 5,
+            updated_at: '2024-01-01T00:00:00Z',
+          },
+        ],
+      },
+    })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const result = await client.searchRepos('old')
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toEqual({
+      fullName: 'jtl-software/old-repo',
+      name: 'old-repo',
+      owner: 'jtl-software',
+      isPrivate: true,
+      language: 'Go',
+      stargazersCount: 5,
+      updatedAt: '2024-01-01T00:00:00Z',
+    })
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   // getRepos
   test('getRepos maps API response fields to GitHubRepo', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')

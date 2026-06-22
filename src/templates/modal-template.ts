@@ -15,7 +15,7 @@ export function toRepoListItem(repo: GitHubRepo, isPinned: boolean): RepoListIte
   }
 }
 
-function renderRepoRow(vm: RepoListItemViewModel): string {
+export function renderRepoRow(vm: RepoListItemViewModel): string {
   const safeOwner = escapeHtml(vm.owner)
   const safeName = escapeHtml(vm.name)
   const safeFullName = escapeHtml(vm.fullName)
@@ -48,7 +48,7 @@ function renderRepoRow(vm: RepoListItemViewModel): string {
 }
 
 export function renderRepoModal(repos: GitHubRepo[], pinned: Set<string>): string {
-  const items = repos.slice(0, 100).map((r) => toRepoListItem(r, pinned.has(r.fullName)))
+  const items = repos.map((r) => toRepoListItem(r, pinned.has(r.fullName)))
   return `
 <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
   <div class="modal" onclick="event.stopPropagation()">
@@ -58,11 +58,15 @@ export function renderRepoModal(repos: GitHubRepo[], pinned: Set<string>): strin
               style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:20px">×</button>
     </div>
     <div style="padding:10px 14px;border-bottom:1px solid #21262d">
-      <input id="repo-search" type="text" placeholder="Search repos…"
+      <input id="repo-search" name="q" type="text" placeholder="Search repos…"
+             hx-get="/api/repos/search"
+             hx-target="#repo-list"
+             hx-swap="innerHTML"
+             hx-trigger="input changed delay:300ms"
              style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
                     padding:7px 11px;color:#e6edf3;font-size:13px;outline:none"/>
     </div>
-    <div style="overflow-y:auto;flex:1">
+    <div id="repo-list" style="overflow-y:auto;flex:1">
       ${items.map(renderRepoRow).join('')}
     </div>
   </div>

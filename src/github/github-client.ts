@@ -61,6 +61,7 @@ type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
 export interface GitHubClient {
   getUser(): Promise<GitHubUser>
   getRepos(): Promise<GitHubRepo[]>
+  searchRepos(q: string): Promise<GitHubRepo[]>
   getPrs(fullName: string): Promise<GitHubPr[]>
   getLastCommitDate(fullName: string): Promise<Date | null>
   getCiStatus(fullName: string, sha: string): Promise<CiStatus>
@@ -150,6 +151,31 @@ export function createGitHubClient(
           updatedAt: repo.updated_at,
         }
       })
+    },
+
+    async searchRepos(q) {
+      const data = (await gfetch(
+        `/search/repositories?q=${encodeURIComponent(q)}&sort=updated&per_page=30`,
+      )) as {
+        items: Array<{
+          full_name: string
+          name: string
+          owner: { login: string }
+          private: boolean
+          language: string | null
+          stargazers_count: number
+          updated_at: string
+        }>
+      }
+      return data.items.map((r) => ({
+        fullName: r.full_name,
+        name: r.name,
+        owner: r.owner.login,
+        isPrivate: r.private,
+        language: r.language,
+        stargazersCount: r.stargazers_count,
+        updatedAt: r.updated_at,
+      }))
     },
 
     async getPrs(fullName) {
