@@ -74,14 +74,14 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     ciDotColor: overallCi ? ciColor(overallCi) : 'transparent',
     ciDotLabel: overallCi ? ciLabel(overallCi) : '',
     showCiDot: overallCi !== null,
-    depDisplay: dep >= 100 ? '99+' : String(dep),
+    depDisplay: dep === 0 ? '✓' : dep >= 100 ? '99+' : String(dep),
     depColor: depColor(dep),
     depLabel:
       dep === 0
         ? 'No Dependabot alerts'
         : dep >= 100
-          ? '99+ Alerts'
-          : `${dep} Alert${dep === 1 ? '' : 's'}`,
+          ? '99+ open Dependabot alerts'
+          : `${dep} open Dependabot alert${dep === 1 ? '' : 's'}`,
     depTrend: trendStr,
     hasDepTrend: trendStr.length > 0,
     depCollecting: trendStr.length === 0,
@@ -246,7 +246,7 @@ export function renderCards(vms: CardViewModel[]): string {
       <p style="margin:0 0 24px">Click "+ Add repo" to get started.</p>
     </div>`
   }
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(max(22%,340px),1fr));gap:16px">
     ${vms.map(renderCard).join('')}
   </div>`
 }

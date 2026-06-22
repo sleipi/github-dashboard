@@ -35,9 +35,9 @@ describe('toCardViewModel', () => {
     expect(vm.hasPrs).toBe(false)
   })
 
-  test('depDisplay shows count when dependabotCount is 0', () => {
+  test('depDisplay shows checkmark when dependabotCount is 0', () => {
     const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
-    expect(vm.depDisplay).toBe('0')
+    expect(vm.depDisplay).toBe('✓')
   })
 
   test('depDisplay shows exact number below 100', () => {
@@ -67,13 +67,13 @@ describe('toCardViewModel', () => {
     expect(vm.depDisplay).toBe('99+')
   })
 
-  test('depLabel shows "99+ Alerts" when dependabotCount is >= 100', () => {
+  test('depLabel shows "99+ open Dependabot alerts" when dependabotCount is >= 100', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
       cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 100 },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depLabel).toBe('99+ Alerts')
+    expect(vm.depLabel).toBe('99+ open Dependabot alerts')
   })
 
   test('borderColor is bright green and has glow for a commit < 1 hour ago', () => {
@@ -210,7 +210,7 @@ describe('renderCards', () => {
   test('renderCards uses auto-fill grid', () => {
     const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
     const html = renderCards([vm])
-    expect(html).toContain('repeat(auto-fill,minmax(340px,1fr))')
+    expect(html).toContain('repeat(auto-fill,minmax(max(22%,340px),1fr))')
   })
 
   test('activity more button is centred', () => {

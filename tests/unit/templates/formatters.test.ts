@@ -10,14 +10,14 @@ import {
 const now = new Date('2026-06-20T12:00:00Z')
 
 describe('formatRelative', () => {
-  test('returns "Gerade eben" for < 60s', () => {
-    expect(formatRelative(new Date(now.getTime() - 30_000), now)).toBe('Gerade eben')
+  test('returns "just now" for < 60s', () => {
+    expect(formatRelative(new Date(now.getTime() - 30_000), now)).toBe('just now')
   })
   test('returns minutes for < 1h', () => {
-    expect(formatRelative(new Date(now.getTime() - 5 * 60_000), now)).toBe('vor 5 Min.')
+    expect(formatRelative(new Date(now.getTime() - 5 * 60_000), now)).toBe('5m ago')
   })
   test('returns hours for < 24h', () => {
-    expect(formatRelative(new Date(now.getTime() - 3 * 3_600_000), now)).toBe('vor 3 Std.')
+    expect(formatRelative(new Date(now.getTime() - 3 * 3_600_000), now)).toBe('3h ago')
   })
   test('returns "—" for null', () => {
     expect(formatRelative(null, now)).toBe('—')

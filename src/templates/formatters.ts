@@ -12,12 +12,12 @@ export function escapeHtml(str: string): string {
 export function formatRelative(date: Date | null, now: Date = new Date()): string {
   if (!date) return '—'
   const s = Math.floor((now.getTime() - date.getTime()) / 1000)
-  if (s < 60) return 'Gerade eben'
-  if (s < 3600) return `vor ${Math.floor(s / 60)} Min.`
-  if (s < 86400) return `vor ${Math.floor(s / 3600)} Std.`
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   const days = Math.floor(s / 86400)
-  if (days < 30) return `vor ${days} Tag${days === 1 ? '' : 'en'}`
-  return date.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (days < 30) return `${days}d ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const CI_COLOR: Record<CiStatus, string> = {
@@ -28,10 +28,10 @@ const CI_COLOR: Record<CiStatus, string> = {
 }
 
 const CI_LABEL: Record<CiStatus, string> = {
-  success: 'CI: erfolgreich',
-  failure: 'CI: fehlgeschlagen',
-  pending: 'CI: läuft…',
-  unknown: 'Kein CI',
+  success: 'CI passing',
+  failure: 'CI failing',
+  pending: 'CI running…',
+  unknown: 'No CI status',
 }
 
 export function ciColor(status: CiStatus): string {
