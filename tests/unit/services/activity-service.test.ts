@@ -327,4 +327,61 @@ describe('ActivityService', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('sync removes resolved Dependabot alerts no longer returned by API', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    // Pre-seed two alerts — one will be resolved
+    repos.activity.upsertActivities('alice/alpha', [
+      {
+        repoFullName: 'alice/alpha',
+        eventType: 'security_alert',
+        actor: '@dependabot',
+        subject: 'security: lodash — Prototype Pollution',
+        linkUrl: 'https://github.com/alice/alpha/security/dependabot/1',
+        occurredAt: new Date('2026-06-20T08:00:00Z'),
+        recordedAt: new Date(),
+        githubEventId: null,
+      },
+      {
+        repoFullName: 'alice/alpha',
+        eventType: 'security_alert',
+        actor: '@dependabot',
+        subject: 'security: axios — SSRF',
+        linkUrl: 'https://github.com/alice/alpha/security/dependabot/2',
+        occurredAt: new Date('2026-06-20T09:00:00Z'),
+        recordedAt: new Date(),
+        githubEventId: null,
+      },
+    ])
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsCachedAt: new Date(),
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(Date.now() - 10 * 60_000),
+    })
+    // API now only returns alert #1 — alert #2 was resolved
+    const getDependabotAlerts = mock(async () => [
+      {
+        number: 1,
+        packageName: 'lodash',
+        summary: 'Prototype Pollution',
+        severity: 'critical',
+        htmlUrl: 'https://github.com/alice/alpha/security/dependabot/1',
+        createdAt: '2026-06-20T08:00:00Z',
+      },
+    ])
+    const service = createActivityService(repos, makeClient({ getDependabotAlerts }))
+
+    await service.sync('alice/alpha')
+
+    const remaining = repos.activity
+      .getActivities('alice/alpha')
+      .filter((a) => a.eventType === 'security_alert')
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0]?.linkUrl).toBe('https://github.com/alice/alpha/security/dependabot/1')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

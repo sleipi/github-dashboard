@@ -139,6 +139,28 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
+  test('getDependabotAlerts requests per_page=100', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    let capturedUrl = ''
+    const fetchFn = mock(async (url: string) => {
+      capturedUrl = url
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    await client.getDependabotAlerts('alice/alpha')
+    expect(capturedUrl).toContain('per_page=100')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   // getRepoEvents
   test('getRepoEvents returns events on 200', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')

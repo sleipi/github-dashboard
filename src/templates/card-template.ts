@@ -74,9 +74,14 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     ciDotColor: overallCi ? ciColor(overallCi) : 'transparent',
     ciDotLabel: overallCi ? ciLabel(overallCi) : '',
     showCiDot: overallCi !== null,
-    depDisplay: String(dep),
+    depDisplay: dep >= 100 ? '99+' : String(dep),
     depColor: depColor(dep),
-    depLabel: dep === 0 ? 'No Dependabot alerts' : `${dep} Alert${dep === 1 ? '' : 's'}`,
+    depLabel:
+      dep === 0
+        ? 'No Dependabot alerts'
+        : dep >= 100
+          ? '99+ Alerts'
+          : `${dep} Alert${dep === 1 ? '' : 's'}`,
     depTrend: trendStr,
     hasDepTrend: trendStr.length > 0,
     depCollecting: trendStr.length === 0,

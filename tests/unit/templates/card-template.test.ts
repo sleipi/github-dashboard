@@ -40,6 +40,42 @@ describe('toCardViewModel', () => {
     expect(vm.depDisplay).toBe('0')
   })
 
+  test('depDisplay shows exact number below 100', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 99 },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depDisplay).toBe('99')
+  })
+
+  test('depDisplay shows "99+" when dependabotCount is 100', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 100 },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depDisplay).toBe('99+')
+  })
+
+  test('depDisplay shows "99+" when dependabotCount exceeds 100', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 150 },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depDisplay).toBe('99+')
+  })
+
+  test('depLabel shows "99+ Alerts" when dependabotCount is >= 100', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 100 },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depLabel).toBe('99+ Alerts')
+  })
+
   test('borderColor is bright green and has glow for a commit < 1 hour ago', () => {
     const recentData: CardData = {
       ...emptyCardData('alice/fresh'),

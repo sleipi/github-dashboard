@@ -62,6 +62,31 @@ export function createSqliteActivityRepo(db: Database): ActivityRepo {
       })()
     },
 
+    replaceSecurityAlerts(fullName, alerts) {
+      db.transaction(() => {
+        db.run(`DELETE FROM activity WHERE repo_full_name = ? AND event_type = 'security_alert'`, [
+          fullName,
+        ])
+        for (const a of alerts) {
+          db.run(
+            `INSERT INTO activity
+             (repo_full_name, event_type, actor, subject, link_url, occurred_at, recorded_at, github_event_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              a.repoFullName,
+              a.eventType,
+              a.actor,
+              a.subject,
+              a.linkUrl,
+              a.occurredAt.toISOString(),
+              a.recordedAt.toISOString(),
+              null,
+            ],
+          )
+        }
+      })()
+    },
+
     getDependabotCount(fullName) {
       const row = db
         .query<{ count: number }, [string]>(

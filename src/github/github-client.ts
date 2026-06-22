@@ -270,7 +270,7 @@ export function createGitHubClient(
       if (!token) return []
       try {
         const res = await fetchFn(
-          `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=10`,
+          `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=100`,
           {
             headers: {
               Authorization: `token ${token.pat}`,

@@ -176,30 +176,16 @@ async function syncDependabotAlerts(
   client: GitHubClient,
 ): Promise<void> {
   const alerts = await client.getDependabotAlerts(fullName)
-  if (alerts.length === 0) return
-
-  const existing = new Set(
-    repos.activity
-      .getActivities(fullName)
-      .filter((a) => a.eventType === 'security_alert')
-      .map((a) => a.linkUrl),
-  )
-
   const now = new Date()
-  const newAlerts = alerts
-    .filter((a) => !existing.has(a.htmlUrl))
-    .map((a) => ({
-      repoFullName: fullName,
-      eventType: 'security_alert' as ActivityEventType,
-      actor: '@dependabot',
-      subject: `security: ${a.packageName} — ${a.summary}`,
-      linkUrl: a.htmlUrl,
-      occurredAt: new Date(a.createdAt),
-      recordedAt: now,
-      githubEventId: null,
-    }))
-
-  if (newAlerts.length > 0) {
-    repos.activity.upsertActivities(fullName, newAlerts)
-  }
+  const mapped = alerts.map((a) => ({
+    repoFullName: fullName,
+    eventType: 'security_alert' as ActivityEventType,
+    actor: '@dependabot',
+    subject: `security: ${a.packageName} — ${a.summary}`,
+    linkUrl: a.htmlUrl,
+    occurredAt: new Date(a.createdAt),
+    recordedAt: now,
+    githubEventId: null,
+  }))
+  repos.activity.replaceSecurityAlerts(fullName, mapped)
 }
