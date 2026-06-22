@@ -1,6 +1,6 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
 import type { GitHubClient } from '../github/github-client.ts'
-import type { CardService } from '../services/card-service.ts'
+import type { CardData, CardService } from '../services/card-service.ts'
 import { getPatExpirySeverity } from '../services/pat-expiry-service.ts'
 import {
   renderCard,
@@ -42,7 +42,15 @@ export function createCardRoutes(
           }
         }
 
-        const cards = await cardService.getCards()
+        const pinned = cardService.getPinned()
+        const results = await Promise.allSettled(
+          pinned.map((fullName) =>
+            cardService.getCard(fullName, new Set(['prs', 'commits', 'ci'])),
+          ),
+        )
+        const cards = results
+          .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
+          .map((r) => r.value)
         const vms = cards.map(toCardViewModel)
         const severity =
           token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
@@ -61,7 +69,15 @@ export function createCardRoutes(
     {
       match: (url, method) => url.pathname === '/api/cards' && method === 'GET',
       async handle() {
-        const cards = await cardService.getCards()
+        const pinned = cardService.getPinned()
+        const results = await Promise.allSettled(
+          pinned.map((fullName) =>
+            cardService.getCard(fullName, new Set(['prs', 'commits', 'ci'])),
+          ),
+        )
+        const cards = results
+          .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
+          .map((r) => r.value)
         return html(renderCards(cards.map(toCardViewModel)))
       },
     },
@@ -72,7 +88,7 @@ export function createCardRoutes(
         const [, , , owner, repo] = url.pathname.split('/')
         const fullName = `${owner}/${repo}`
         try {
-          const data = await cardService.getCard(fullName)
+          const data = await cardService.getCard(fullName, new Set(['prs', 'commits', 'ci']))
           return html(renderCard(toCardViewModel(data)))
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Fehler beim Laden'

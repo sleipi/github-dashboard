@@ -18,12 +18,12 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
 }
 
 describe('CardService', () => {
-  test('getCards returns empty array when nothing is pinned', async () => {
+  test('getPinned returns empty array when nothing is pinned', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
 
-    expect(await service.getCards()).toEqual([])
+    expect(service.getPinned()).toEqual([])
 
     repos.close()
     cleanupTempDir(dir)
@@ -65,7 +65,7 @@ describe('CardService', () => {
     const service = createCardService(repos, makeClient({ getPrs }))
 
     repos.cards.pin('alice/alpha')
-    await service.getCard('alice/alpha')
+    await service.getCard('alice/alpha', new Set(['prs', 'commits', 'ci']))
 
     expect(getPrs).toHaveBeenCalledTimes(1)
     expect(repos.pullRequests.getCache('alice/alpha')).not.toBeNull()
@@ -74,38 +74,17 @@ describe('CardService', () => {
     cleanupTempDir(dir)
   })
 
-  test('getCard uses cache when data is fresh (< 30s)', async () => {
+  test('getCard skips GitHub fetch when refreshNeeded is empty and cache exists', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)
     const getPrs = mock(async () => [])
     const service = createCardService(repos, makeClient({ getPrs }))
 
     repos.cards.pin('alice/alpha')
-    await service.getCard('alice/alpha') // 1. Fetch
-    await service.getCard('alice/alpha') // 2. Sollte Cache nutzen
+    await service.getCard('alice/alpha', new Set(['prs', 'commits', 'ci'])) // 1. Fetch
+    await service.getCard('alice/alpha', new Set()) // 2. Should use cache
 
-    expect(getPrs).toHaveBeenCalledTimes(1) // nur einmal gefetcht
-    repos.close()
-    cleanupTempDir(dir)
-  })
-
-  test('getCards skips failed cards and returns the rest', async () => {
-    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
-    const repos = createSqliteRepos(dbPath)
-    const getPrs = mock(async (fullName: string) => {
-      if (fullName === 'alice/broken') throw new Error('GitHub API error')
-      return []
-    })
-    const service = createCardService(repos, makeClient({ getPrs }))
-
-    repos.cards.pin('alice/alpha')
-    repos.cards.pin('alice/broken')
-    repos.cards.pin('alice/beta')
-
-    const cards = await service.getCards()
-
-    expect(cards).toHaveLength(2)
-    expect(cards.map((c) => c.fullName)).toEqual(['alice/alpha', 'alice/beta'])
+    expect(getPrs).toHaveBeenCalledTimes(1) // only fetched once
     repos.close()
     cleanupTempDir(dir)
   })
@@ -136,7 +115,7 @@ describe('CardService', () => {
     )
 
     repos.cards.pin('alice/alpha')
-    await service.getCard('alice/alpha')
+    await service.getCard('alice/alpha', new Set(['prs', 'commits', 'ci']))
 
     expect(getCiStatus).toHaveBeenCalledTimes(3)
     const storedPrs = repos.pullRequests.getPrs('alice/alpha')
@@ -170,7 +149,7 @@ describe('CardService', () => {
     const service = createCardService(repos, makeClient())
 
     repos.cards.pin('alice/alpha')
-    await service.getCard('alice/alpha')
+    await service.getCard('alice/alpha', new Set(['prs', 'commits', 'ci']))
 
     const history = repos.dependabot.getHistory('alice/alpha')
     expect(history.length).toBeGreaterThan(0)
@@ -198,6 +177,105 @@ describe('CardService', () => {
 
     const result = await service.getAllRepos()
     expect(result).toEqual(mockRepos)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard makes no GitHub API calls when refreshNeeded is empty', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPrs = mock(async () => [])
+    const getLastCommitDate = mock(async () => null)
+    const service = createCardService(repos, makeClient({ getPrs, getLastCommitDate }))
+
+    // Seed a cache so there's data to serve
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+
+    await service.getCard('alice/alpha', new Set())
+
+    expect(getPrs).not.toHaveBeenCalled()
+    expect(getLastCommitDate).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard fetches PRs when refreshNeeded includes prs', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPrs = mock(async () => [])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+    const service = createCardService(repos, makeClient({ getPrs }))
+
+    await service.getCard('alice/alpha', new Set(['prs']))
+
+    expect(getPrs).toHaveBeenCalledTimes(1)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard reads Dependabot count from activity repo', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    // Seed 2 security_alert activities
+    repos.activity.upsertActivities('alice/alpha', [
+      {
+        repoFullName: 'alice/alpha',
+        eventType: 'security_alert',
+        actor: '@dependabot',
+        subject: 's1',
+        linkUrl: 'https://github.com/alice/alpha/security/dependabot/1',
+        occurredAt: new Date(),
+        recordedAt: new Date(),
+        githubEventId: null,
+      },
+      {
+        repoFullName: 'alice/alpha',
+        eventType: 'security_alert',
+        actor: '@dependabot',
+        subject: 's2',
+        linkUrl: 'https://github.com/alice/alpha/security/dependabot/2',
+        occurredAt: new Date(),
+        recordedAt: new Date(),
+        githubEventId: null,
+      },
+    ])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+    const service = createCardService(repos, makeClient())
+
+    const data = await service.getCard('alice/alpha', new Set())
+
+    expect(data.cache.dependabotCount).toBe(2)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getPinned returns full names of pinned repos in order', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    repos.cards.pin('alice/beta')
+    const service = createCardService(repos, makeClient())
+
+    const pinned = service.getPinned()
+
+    expect(pinned).toContain('alice/alpha')
+    expect(pinned).toContain('alice/beta')
 
     repos.close()
     cleanupTempDir(dir)
