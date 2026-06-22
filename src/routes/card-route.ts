@@ -51,7 +51,7 @@ export function createCardRoutes(
         const cards = results
           .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
           .map((r) => r.value)
-        const vms = cards.map(toCardViewModel)
+        const vms = cards.map((data) => toCardViewModel(data, []))
         const severity =
           token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
         return html(
@@ -78,7 +78,7 @@ export function createCardRoutes(
         const cards = results
           .filter((r): r is PromiseFulfilledResult<CardData> => r.status === 'fulfilled')
           .map((r) => r.value)
-        return html(renderCards(cards.map(toCardViewModel)))
+        return html(renderCards(cards.map((data) => toCardViewModel(data, []))))
       },
     },
     // GET /api/card/:owner/:repo — single card
@@ -89,7 +89,7 @@ export function createCardRoutes(
         const fullName = `${owner}/${repo}`
         try {
           const data = await cardService.getCard(fullName, new Set(['prs', 'commits', 'ci']))
-          return html(renderCard(toCardViewModel(data)))
+          return html(renderCard(toCardViewModel(data, [])))
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Fehler beim Laden'
           return html(renderCardError(fullName, msg))

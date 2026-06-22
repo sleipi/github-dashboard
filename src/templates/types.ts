@@ -1,3 +1,9 @@
+export type ActivityItemViewModel = {
+  readonly text: string
+  readonly linkUrl: string
+  readonly timeAgo: string
+}
+
 export type PrRowViewModel = {
   readonly number: number
   readonly title: string
@@ -5,6 +11,7 @@ export type PrRowViewModel = {
   readonly ciColor: string
   readonly ciLabel: string
   readonly prUrl: string
+  readonly newHighlightHours: number | null // null = no highlight; 0–5 = hour band
 }
 
 export type CardViewModel = {
@@ -23,6 +30,9 @@ export type CardViewModel = {
   readonly depTrend: string // "(+2, -1)" oder ""
   readonly hasDepTrend: boolean
   readonly depCollecting: boolean
+  readonly activities: readonly ActivityItemViewModel[]
+  readonly activityMore: number
+  readonly hasActivityMore: boolean
   readonly prs: ReadonlyArray<PrRowViewModel>
   readonly hasPrs: boolean
   readonly noPrs: boolean

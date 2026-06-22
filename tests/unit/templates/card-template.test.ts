@@ -23,19 +23,19 @@ const emptyCardData = (fullName: string): CardData => ({
 
 describe('toCardViewModel', () => {
   test('splits fullName into owner and name', () => {
-    const vm = toCardViewModel(emptyCardData('alice/my-repo'))
+    const vm = toCardViewModel(emptyCardData('alice/my-repo'), [])
     expect(vm.owner).toBe('alice')
     expect(vm.name).toBe('my-repo')
   })
 
   test('noPrs is true when prs array is empty', () => {
-    const vm = toCardViewModel(emptyCardData('alice/alpha'))
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
     expect(vm.noPrs).toBe(true)
     expect(vm.hasPrs).toBe(false)
   })
 
   test('depDisplay shows count when dependabotCount is 0', () => {
-    const vm = toCardViewModel(emptyCardData('alice/alpha'))
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
     expect(vm.depDisplay).toBe('0')
   })
 
@@ -47,7 +47,7 @@ describe('toCardViewModel', () => {
         lastCommitAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
       },
     }
-    const vm = toCardViewModel(recentData)
+    const vm = toCardViewModel(recentData, [])
     expect(vm.borderColor).toBe('#2ea043')
     expect(vm.borderGlow).toBe('0 0 0 1px #2ea043')
   })
@@ -60,7 +60,7 @@ describe('toCardViewModel', () => {
         lastCommitAt: new Date(Date.now() - 2 * 3_600_000), // 2 hours ago
       },
     }
-    const vm = toCardViewModel(recentData)
+    const vm = toCardViewModel(recentData, [])
     expect(vm.borderColor).toBe('#1a6b32')
     expect(vm.borderGlow).toBe('0 0 0 1px #1a6b3266')
   })
@@ -73,7 +73,7 @@ describe('toCardViewModel', () => {
         lastCommitAt: new Date(Date.now() - 2 * 86_400_000), // 2 days ago
       },
     }
-    const vm = toCardViewModel(recentData)
+    const vm = toCardViewModel(recentData, [])
     expect(vm.borderColor).toBe('#1a4228')
     expect(vm.borderGlow).toBe('')
   })
@@ -86,7 +86,7 @@ describe('toCardViewModel', () => {
         lastCommitAt: new Date(Date.now() - 7 * 86_400_000), // 7 days ago
       },
     }
-    const vm = toCardViewModel(recentData)
+    const vm = toCardViewModel(recentData, [])
     expect(vm.borderColor).toBe('#30363d')
     expect(vm.borderGlow).toBe('')
   })
@@ -99,7 +99,7 @@ describe('toCardViewModel', () => {
         lastCommitAt: null,
       },
     }
-    const vm = toCardViewModel(recentData)
+    const vm = toCardViewModel(recentData, [])
     expect(vm.borderColor).toBe('#30363d')
     expect(vm.borderGlow).toBe('')
   })
@@ -107,13 +107,13 @@ describe('toCardViewModel', () => {
 
 describe('renderCard', () => {
   test('contains repo link', () => {
-    const vm = toCardViewModel(emptyCardData('alice/alpha'))
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
     const html = renderCard(vm)
     expect(html).toContain('https://github.com/alice/alpha')
   })
 
   test('contains HTMX refresh button', () => {
-    const vm = toCardViewModel(emptyCardData('alice/alpha'))
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
     const html = renderCard(vm)
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
@@ -123,13 +123,13 @@ describe('renderCard', () => {
       ...emptyCardData('alice/no-dep'),
       cache: { ...emptyCardData('alice/no-dep').cache, dependabotCount: null },
     }
-    const html = renderCard(toCardViewModel(data))
+    const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('🛡')
     expect(html).toContain('Dependabot: kein Zugriff')
   })
 
   test('zeigt weitere-PRs-Button wenn mehr als MAX_PRS_ON_CARD vorhanden', () => {
-    const prs = Array.from({ length: 7 }, (_, i) => ({
+    const prs = Array.from({ length: 6 }, (_, i) => ({
       repoFullName: 'alice/busy',
       number: i + 1,
       title: `PR ${i + 1}`,
@@ -142,7 +142,7 @@ describe('renderCard', () => {
       updatedAt: new Date(),
     }))
     const data: CardData = { ...emptyCardData('alice/busy'), prs }
-    const html = renderCard(toCardViewModel(data))
+    const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('hx-get="/api/prs/alice/busy"')
     expect(html).toContain('weiterer PR')
   })
@@ -162,8 +162,8 @@ describe('renderCards', () => {
 
   test('renders card html for each viewmodel', () => {
     const vms = [
-      toCardViewModel(emptyCardData('alice/alpha')),
-      toCardViewModel(emptyCardData('alice/beta')),
+      toCardViewModel(emptyCardData('alice/alpha'), []),
+      toCardViewModel(emptyCardData('alice/beta'), []),
     ]
     const html = renderCards(vms)
     expect(html).toContain('alice/alpha')

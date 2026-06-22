@@ -1,4 +1,4 @@
-import type { CiStatus } from '../db/types.ts'
+import type { Activity, CiStatus } from '../db/types.ts'
 import type { CardData } from '../services/card-service.ts'
 import {
   aggregateCiStatus,
@@ -9,9 +9,11 @@ import {
   formatRelative,
   formatTrend,
 } from './formatters.ts'
-import type { CardViewModel, PrRowViewModel } from './types.ts'
+import type { ActivityItemViewModel, CardViewModel, PrRowViewModel } from './types.ts'
 
-const MAX_PRS_ON_CARD = 6
+const MAX_PRS_ON_CARD = 5
+const MAX_ACTIVITIES_ON_CARD = 5
+const HIGHLIGHT_OPACITIES = [0.5, 0.42, 0.33, 0.25, 0.17, 0.08] as const
 
 function commitBorderStyle(lastCommitAt: Date | null): { borderColor: string; borderGlow: string } {
   if (!lastCommitAt) return { borderColor: '#30363d', borderGlow: '' }
@@ -24,26 +26,43 @@ function commitBorderStyle(lastCommitAt: Date | null): { borderColor: string; bo
   return { borderColor: '#30363d', borderGlow: '' }
 }
 
-export function toCardViewModel(data: CardData): CardViewModel {
+function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel {
+  return {
+    text: `${a.actor} ${a.subject}`,
+    linkUrl: a.linkUrl,
+    timeAgo: formatRelative(a.occurredAt, now),
+  }
+}
+
+export function toCardViewModel(data: CardData, activities: readonly Activity[]): CardViewModel {
   const { fullName, cache, prs, trend } = data
   const [owner = '', name = ''] = fullName.split('/')
+  const now = new Date()
 
   const displayPrs = prs.slice(0, MAX_PRS_ON_CARD)
   const prMore = Math.max(0, prs.length - displayPrs.length)
   const ciStatuses = prs.map((p) => p.ciStatus) as CiStatus[]
   const overallCi = aggregateCiStatus(ciStatuses)
 
-  const prRows: PrRowViewModel[] = displayPrs.map((pr) => ({
-    number: pr.number,
-    title: pr.title,
-    draft: pr.draft,
-    ciColor: ciColor(pr.ciStatus),
-    ciLabel: ciLabel(pr.ciStatus),
-    prUrl: pr.prUrl,
-  }))
+  const prRows: PrRowViewModel[] = displayPrs.map((pr) => {
+    const ageHours = Math.floor((now.getTime() - pr.createdAt.getTime()) / 3_600_000)
+    const newHighlightHours = ageHours < 6 ? ageHours : null
+    return {
+      number: pr.number,
+      title: pr.title,
+      draft: pr.draft,
+      ciColor: ciColor(pr.ciStatus),
+      ciLabel: ciLabel(pr.ciStatus),
+      prUrl: pr.prUrl,
+      newHighlightHours,
+    }
+  })
 
   const dep = cache.dependabotCount
   const trendStr = formatTrend(trend)
+
+  const displayActivities = activities.slice(0, MAX_ACTIVITIES_ON_CARD)
+  const activityMore = Math.max(0, activities.length - MAX_ACTIVITIES_ON_CARD)
 
   return {
     fullName,
@@ -66,6 +85,9 @@ export function toCardViewModel(data: CardData): CardViewModel {
     depTrend: trendStr,
     hasDepTrend: trendStr.length > 0,
     depCollecting: dep !== null && trendStr.length === 0,
+    activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
+    activityMore,
+    hasActivityMore: activityMore > 0,
     prs: prRows,
     hasPrs: prRows.length > 0,
     noPrs: prRows.length === 0,
@@ -129,6 +151,34 @@ export function renderCard(vm: CardViewModel): string {
           : `<span style="color:#484f58;display:flex;align-items:center;gap:4px" title="${vm.depLabel}">🛡 —</span>`
       }
     </div>
+    ${
+      vm.activities.length > 0
+        ? `
+    <div style="border-top:1px solid #21262d;padding-top:7px;margin-bottom:8px;display:flex;flex-direction:column;gap:2px">
+      ${vm.activities
+        .map(
+          (a) => `
+      <a href="${escapeHtml(a.linkUrl)}" target="_blank" rel="noopener noreferrer"
+         style="display:block;font-size:11px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none;padding:1px 0"
+         onmouseover="this.style.color='#c9d1d9'" onmouseout="this.style.color='#8b949e'"
+         title="${escapeHtml(a.text)} · ${escapeHtml(a.timeAgo)}">
+        ${escapeHtml(a.text)}
+      </a>`,
+        )
+        .join('')}
+      ${
+        vm.hasActivityMore
+          ? `
+      <button hx-get="/api/activity/${safeOwner}/${safeName}"
+              hx-target="#modal" hx-swap="innerHTML"
+              style="font-size:10px;color:#2f81f7;padding:2px 0;text-align:left;background:transparent;border:none;cursor:pointer;font-family:inherit">
+        · ${vm.activityMore} more activities
+      </button>`
+          : ''
+      }
+    </div>`
+        : ''
+    }
     <div style="border-top:1px solid #21262d;padding-top:9px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <span style="font-size:10px;font-weight:600;color:#6e7681;text-transform:uppercase">Pull Requests</span>
@@ -139,16 +189,20 @@ export function renderCard(vm: CardViewModel): string {
           ? `
       <div style="display:flex;flex-direction:column;gap:1px">
         ${vm.prs
-          .map(
-            (pr) => `
-        <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer" class="pr-row">
+          .map((pr) => {
+            const bgStyle =
+              pr.newHighlightHours !== null
+                ? ` style="background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[pr.newHighlightHours]})"`
+                : ''
+            return `
+        <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer" class="pr-row"${bgStyle}>
           <div class="ci-dot" style="background:${pr.ciColor}" title="${pr.ciLabel}"></div>
           <span style="font-size:10px;color:#6e7681;font-family:monospace">#${pr.number}</span>
           <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escapeHtml(pr.title)}</span>
           ${pr.draft ? '<span class="badge">Draft</span>' : ''}
           <svg width="10" height="10" viewBox="0 0 16 16" fill="#6e7681" style="flex-shrink:0"><path d="M10.604 1h4.146a.25.25 0 01.25.25v4.146a.25.25 0 01-.427.177L13.03 4.03 9.28 7.78a.75.75 0 01-1.06-1.06l3.75-3.75-1.543-1.543A.25.25 0 0110.604 1zM3.75 2A1.75 1.75 0 002 3.75v8.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0014 12.25v-3.5a.75.75 0 00-1.5 0v3.5a.25.25 0 01-.25.25h-8.5a.25.25 0 01-.25-.25v-8.5a.25.25 0 01.25-.25h3.5a.75.75 0 000-1.5h-3.5z"/></svg>
-        </a>`,
-          )
+        </a>`
+          })
           .join('')}
       </div>
       ${
