@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PullRequest } from '../../../src/db/types.ts'
-import { renderPrModal } from '../../../src/templates/pr-modal-template.ts'
+import { renderPrModal, toPrModalViewModel } from '../../../src/templates/pr-modal-template.ts'
 
 const makePr = (overrides: Partial<PullRequest> = {}): PullRequest => ({
   repoFullName: 'alice/alpha',
@@ -84,5 +84,53 @@ describe('renderPrModal', () => {
     ])
     expect(html).toContain('First PR')
     expect(html).toContain('Second PR')
+  })
+})
+
+describe('toPrModalViewModel', () => {
+  test('maps fullName and pre-formats relative timestamps', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const pr = makePr({
+      createdAt: new Date('2026-06-22T10:00:00Z'),
+      updatedAt: new Date('2026-06-22T11:30:00Z'),
+    })
+    const vm = toPrModalViewModel('alice/alpha', [pr], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    const row = vm.prs[0]!
+    expect(vm.fullName).toBe('alice/alpha')
+    expect(row.createdAt).toContain('Std.')
+    expect(row.updatedAt).toContain('Min.')
+  })
+
+  test('pre-computes ciColor from ciStatus', () => {
+    const pr = makePr({ ciStatus: 'failure' })
+    const vm = toPrModalViewModel('alice/alpha', [pr], new Date())
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.prs[0]!.ciColor).toBe('#f85149')
+  })
+
+  test('pre-computes label style from hex color', () => {
+    const pr = makePr({ labels: [{ name: 'bug', color: 'f85149' }] })
+    const vm = toPrModalViewModel('alice/alpha', [pr], new Date())
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    const label = vm.prs[0]!.labels[0]!
+    expect(label.name).toBe('bug')
+    expect(label.style).toContain('rgba(248,81,73,')
+  })
+
+  test('escapes HTML in label name', () => {
+    const pr = makePr({ labels: [{ name: '<xss>', color: 'ffffff' }] })
+    const vm = toPrModalViewModel('alice/alpha', [pr], new Date())
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.prs[0]!.labels[0]!.name).toBe('&lt;xss&gt;')
+  })
+
+  test('passes through draft and number', () => {
+    const pr = makePr({ number: 42, draft: true })
+    const vm = toPrModalViewModel('alice/alpha', [pr], new Date())
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    const row = vm.prs[0]!
+    expect(row.number).toBe(42)
+    expect(row.draft).toBe(true)
   })
 })

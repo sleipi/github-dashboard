@@ -1,5 +1,6 @@
 import type { PullRequest } from '../db/types.ts'
 import { ciColor, ciLabel, escapeHtml, formatRelative } from './formatters.ts'
+import type { LabelViewModel, PrModalViewModel, PrRowModalItem } from './types.ts'
 
 function labelStyle(hexColor: string): string {
   const r = Number.parseInt(hexColor.slice(0, 2), 16) || 139
@@ -8,9 +9,38 @@ function labelStyle(hexColor: string): string {
   return `background:rgba(${r},${g},${b},.15);color:#${hexColor};border:1px solid rgba(${r},${g},${b},.5)`
 }
 
+export function toPrModalViewModel(
+  fullName: string,
+  prs: PullRequest[],
+  now: Date,
+): PrModalViewModel {
+  return {
+    fullName,
+    prs: prs.map(
+      (pr): PrRowModalItem => ({
+        prUrl: pr.prUrl,
+        number: pr.number,
+        title: escapeHtml(pr.title),
+        draft: pr.draft,
+        ciColor: ciColor(pr.ciStatus),
+        ciLabel: ciLabel(pr.ciStatus),
+        creator: escapeHtml(pr.creator),
+        createdAt: formatRelative(pr.createdAt, now),
+        updatedAt: formatRelative(pr.updatedAt, now),
+        labels: pr.labels.map(
+          (l): LabelViewModel => ({
+            name: escapeHtml(l.name),
+            style: labelStyle(l.color),
+          }),
+        ),
+      }),
+    ),
+  }
+}
+
 export function renderPrModal(fullName: string, prs: PullRequest[]): string {
-  const now = new Date()
-  const safeFullName = escapeHtml(fullName)
+  const vm = toPrModalViewModel(fullName, prs, new Date())
+  const safeFullName = escapeHtml(vm.fullName)
   return `
 <div class="modal-overlay"
      onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
@@ -29,7 +59,7 @@ export function renderPrModal(fullName: string, prs: PullRequest[]): string {
       <span>Ersteller</span><span>Erstellt</span><span>Aktualisiert</span>
     </div>
     <div style="overflow-y:auto;flex:1">
-      ${prs
+      ${vm.prs
         .map(
           (pr) => `
       <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer"
@@ -38,19 +68,19 @@ export function renderPrModal(fullName: string, prs: PullRequest[]): string {
                 text-decoration:none;color:inherit;align-items:center"
          onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background=''">
         <div style="display:flex;align-items:center;gap:5px">
-          <div class="ci-dot" style="background:${ciColor(pr.ciStatus)}" title="${ciLabel(pr.ciStatus)}"></div>
+          <div class="ci-dot" style="background:${pr.ciColor}" title="${pr.ciLabel}"></div>
           <span style="font-size:11px;color:#6e7681;font-family:monospace">#${pr.number}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;min-width:0;padding-right:12px">
           <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-            ${escapeHtml(pr.title)}
+            ${pr.title}
           </span>
           ${pr.draft ? '<span class="badge">Draft</span>' : ''}
-          ${pr.labels.map((l) => `<span style="font-size:10px;border-radius:20px;padding:1px 7px;${labelStyle(l.color)}">${escapeHtml(l.name)}</span>`).join('')}
+          ${pr.labels.map((l) => `<span style="font-size:10px;border-radius:20px;padding:1px 7px;${l.style}">${l.name}</span>`).join('')}
         </div>
-        <span style="font-size:11px;color:#8b949e">${escapeHtml(pr.creator)}</span>
-        <span style="font-size:11px;color:#8b949e">${formatRelative(pr.createdAt, now)}</span>
-        <span style="font-size:11px;color:#8b949e">${formatRelative(pr.updatedAt, now)}</span>
+        <span style="font-size:11px;color:#8b949e">${pr.creator}</span>
+        <span style="font-size:11px;color:#8b949e">${pr.createdAt}</span>
+        <span style="font-size:11px;color:#8b949e">${pr.updatedAt}</span>
       </a>`,
         )
         .join('')}

@@ -60,3 +60,26 @@ export type RepoListItemViewModel = {
   readonly checkboxSvg: string
   readonly languageDisplay: string
 }
+
+export type LabelViewModel = {
+  readonly name: string
+  readonly style: string // pre-computed from hex color
+}
+
+export type PrRowModalItem = {
+  readonly prUrl: string
+  readonly number: number
+  readonly title: string
+  readonly draft: boolean
+  readonly ciColor: string
+  readonly ciLabel: string
+  readonly creator: string
+  readonly createdAt: string
+  readonly updatedAt: string
+  readonly labels: readonly LabelViewModel[]
+}
+
+export type PrModalViewModel = {
+  readonly fullName: string
+  readonly prs: readonly PrRowModalItem[]
+}
