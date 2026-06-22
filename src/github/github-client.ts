@@ -30,30 +30,59 @@ export type GitHubPr = {
   readonly updatedAt: string
 }
 
+export type GitHubEvent = {
+  readonly id: string
+  readonly type: string
+  readonly actor: { readonly login: string }
+  readonly payload: Record<string, unknown>
+  readonly repo: { readonly name: string }
+  readonly createdAt: string
+}
+
+export type GitHubDependabotAlert = {
+  readonly number: number
+  readonly packageName: string
+  readonly summary: string
+  readonly severity: string
+  readonly htmlUrl: string
+  readonly createdAt: string
+}
+
+export type RepoEventsResult =
+  | { readonly notModified: true }
+  | {
+      readonly events: readonly GitHubEvent[]
+      readonly etag: string
+      readonly pollIntervalSecs: number
+    }
+
+type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
+
 export interface GitHubClient {
   getUser(): Promise<GitHubUser>
   getRepos(): Promise<GitHubRepo[]>
   getPrs(fullName: string): Promise<GitHubPr[]>
   getLastCommitDate(fullName: string): Promise<Date | null>
   getCiStatus(fullName: string, sha: string): Promise<CiStatus>
-  getDependabotCount(fullName: string): Promise<number | null>
+  getRepoEvents(fullName: string, etag?: string): Promise<RepoEventsResult>
+  getDependabotAlerts(fullName: string): Promise<GitHubDependabotAlert[]>
 }
-
-type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
 
 export function createGitHubClient(
   authRepo: AuthRepo,
   fetchFn: FetchFn = globalThis.fetch,
 ): GitHubClient {
-  async function gfetch(path: string): Promise<unknown> {
+  function authHeaders(): Record<string, string> {
     const token = authRepo.getToken()
     if (!token) throw new Error('Not authenticated')
-    const res = await fetchFn(`https://api.github.com${path}`, {
-      headers: {
-        Authorization: `token ${token.pat}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    })
+    return {
+      Authorization: `token ${token.pat}`,
+      Accept: 'application/vnd.github.v3+json',
+    }
+  }
+
+  async function gfetch(path: string): Promise<unknown> {
+    const res = await fetchFn(`https://api.github.com${path}`, { headers: authHeaders() })
     if (res.status === 401) throw new Error('Token ungültig (401)')
     if (res.status === 403) {
       const j = (await res.json().catch(() => ({}))) as { message?: string }
@@ -180,36 +209,67 @@ export function createGitHubClient(
       }
     },
 
-    async getDependabotCount(fullName) {
+    async getRepoEvents(fullName, etag) {
+      const headers: Record<string, string> = { ...authHeaders() }
+      if (etag) headers['If-None-Match'] = etag
+      const res = await fetchFn(`https://api.github.com/repos/${fullName}/events`, { headers })
+      if (res.status === 304) return { notModified: true }
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { message?: string }
+        throw new Error(j.message ?? `API-Fehler ${res.status}`)
+      }
+      const raw = (await res.json()) as Array<{
+        id: string
+        type: string
+        actor: { login: string }
+        payload: Record<string, unknown>
+        repo: { name: string }
+        created_at: string
+      }>
+      const newEtag = res.headers.get('ETag') ?? ''
+      const pollIntervalSecs = Number(res.headers.get('X-Poll-Interval') ?? '60')
+      const events: GitHubEvent[] = raw.map((e) => ({
+        id: e.id,
+        type: e.type,
+        actor: { login: e.actor.login },
+        payload: e.payload,
+        repo: { name: e.repo.name },
+        createdAt: e.created_at,
+      }))
+      return { events, etag: newEtag, pollIntervalSecs }
+    },
+
+    async getDependabotAlerts(fullName) {
       const token = authRepo.getToken()
-      if (!token) return null
+      if (!token) return []
       try {
-        // Dependabot API uses cursor-based pagination via Link header — page= is not supported.
-        // Fetches up to 300 open alerts (3 pages × 100).
-        let nextUrl: string | null =
-          `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=100`
-        let total = 0
-        for (let i = 0; i < 3 && nextUrl !== null; i++) {
-          const res = await fetchFn(nextUrl, {
+        const res = await fetchFn(
+          `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=10`,
+          {
             headers: {
               Authorization: `token ${token.pat}`,
               Accept: 'application/vnd.github.v3+json',
             },
-          })
-          if (!res.ok) {
-            const j = (await res.json().catch(() => ({}))) as { message?: string }
-            throw new Error(j.message ?? `API-Fehler ${res.status}`)
-          }
-          const alerts = (await res.json()) as unknown
-          if (!Array.isArray(alerts)) break
-          total += alerts.length
-          const link = res.headers.get('link') ?? ''
-          const next = link.match(/<([^>]+)>;\s*rel="next"/)
-          nextUrl = next ? (next[1] ?? null) : null
-        }
-        return total
+          },
+        )
+        if (!res.ok) return []
+        const raw = (await res.json()) as Array<{
+          number: number
+          dependency: { package: { name: string } }
+          security_advisory: { summary: string; severity: string }
+          html_url: string
+          created_at: string
+        }>
+        return raw.map((a) => ({
+          number: a.number,
+          packageName: a.dependency.package.name,
+          summary: a.security_advisory.summary,
+          severity: a.security_advisory.severity,
+          htmlUrl: a.html_url,
+          createdAt: a.created_at,
+        }))
       } catch {
-        return null
+        return []
       }
     },
   }

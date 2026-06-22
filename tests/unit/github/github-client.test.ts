@@ -91,21 +91,8 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
-  test('getDependabotCount returns null on 403', async () => {
-    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
-    const repos = createSqliteRepos(dbPath)
-    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
-
-    const fetchFn = mock(async () => new Response('{}', { status: 403 }))
-    const client = createGitHubClient(repos.auth, fetchFn)
-
-    expect(await client.getDependabotCount('alice/alpha')).toBeNull()
-
-    repos.close()
-    cleanupTempDir(dir)
-  })
-
-  test('getDependabotCount returns null on 400 (page param not supported)', async () => {
+  // Replace getDependabotCount tests with getDependabotAlerts
+  test('getDependabotAlerts returns alerts array', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
     repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
@@ -113,65 +100,121 @@ describe('GitHubClient', () => {
     const fetchFn = mock(
       async () =>
         new Response(
-          JSON.stringify({ message: 'Pagination using the `page` parameter is not supported.' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
+          JSON.stringify([
+            {
+              number: 1,
+              state: 'open',
+              dependency: { package: { name: 'lodash' } },
+              security_advisory: { summary: 'Prototype Pollution', severity: 'critical' },
+              html_url: 'https://github.com/alice/alpha/security/dependabot/1',
+              created_at: '2026-06-20T08:00:00Z',
+            },
+          ]),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
         ),
     )
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    expect(await client.getDependabotCount('alice/alpha')).toBeNull()
+    const alerts = await client.getDependabotAlerts('alice/alpha')
+    expect(alerts).toHaveLength(1)
+    expect(alerts[0]?.packageName).toBe('lodash')
+    expect(alerts[0]?.summary).toBe('Prototype Pollution')
+    expect(alerts[0]?.htmlUrl).toBe('https://github.com/alice/alpha/security/dependabot/1')
 
     repos.close()
     cleanupTempDir(dir)
   })
 
-  test('getDependabotCount counts alerts on a single page', async () => {
+  test('getDependabotAlerts returns empty array on 403', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
     repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
-    const alerts = Array.from({ length: 5 }, (_, i) => ({ number: i + 1 }))
+    const fetchFn = mock(async () => new Response('{}', { status: 403 }))
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    expect(await client.getDependabotAlerts('alice/alpha')).toEqual([])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  // getRepoEvents
+  test('getRepoEvents returns events on 200', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const event = {
+      id: 'evt_001',
+      type: 'PullRequestEvent',
+      actor: { login: 'bob' },
+      payload: {
+        action: 'closed',
+        pull_request: {
+          number: 42,
+          title: 'Fix bug',
+          merged: true,
+          html_url: 'https://github.com/alice/alpha/pull/42',
+        },
+      },
+      repo: { name: 'alice/alpha' },
+      created_at: '2026-06-20T10:00:00Z',
+    }
     const fetchFn = mock(
       async () =>
-        new Response(JSON.stringify(alerts), {
+        new Response(JSON.stringify([event]), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ETag: '"abc123"',
+            'X-Poll-Interval': '60',
+          },
         }),
     )
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    expect(await client.getDependabotCount('alice/alpha')).toBe(5)
+    const result = await client.getRepoEvents('alice/alpha')
+    expect('notModified' in result).toBe(false)
+    if ('notModified' in result) return
+    expect(result.etag).toBe('"abc123"')
+    expect(result.pollIntervalSecs).toBe(60)
+    expect(result.events).toHaveLength(1)
+    expect(result.events[0]?.id).toBe('evt_001')
 
     repos.close()
     cleanupTempDir(dir)
   })
 
-  test('getDependabotCount folgt Link-Header cursor-basierter Paginierung', async () => {
+  test('getRepoEvents returns notModified on 304', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)
     repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
 
-    const page1 = Array.from({ length: 100 }, (_, i) => ({ number: i + 1 }))
-    const page2 = Array.from({ length: 16 }, (_, i) => ({ number: i + 101 }))
+    const fetchFn = mock(async () => new Response('', { status: 304 }))
+    const client = createGitHubClient(repos.auth, fetchFn)
 
-    const fetchFn = mock(async (url: string) => {
-      if (url.includes('after=cur1')) {
-        return new Response(JSON.stringify(page2), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-      return new Response(JSON.stringify(page1), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          Link: '<https://api.github.com/repos/alice/big/dependabot/alerts?per_page=100&after=cur1&state=open>; rel="next"',
-        },
-      })
+    const result = await client.getRepoEvents('alice/alpha', '"abc123"')
+    expect(result).toEqual({ notModified: true })
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getRepoEvents sends If-None-Match header when etag provided', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    let capturedHeaders: Headers | undefined
+    const fetchFn = mock(async (_url: string, init?: RequestInit) => {
+      capturedHeaders = new Headers(init?.headers as HeadersInit)
+      return new Response('', { status: 304 })
     })
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    expect(await client.getDependabotCount('alice/big')).toBe(116)
+    await client.getRepoEvents('alice/alpha', '"myetag"')
+    expect(capturedHeaders?.get('If-None-Match')).toBe('"myetag"')
 
     repos.close()
     cleanupTempDir(dir)

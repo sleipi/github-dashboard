@@ -11,7 +11,8 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),
     getCiStatus: mock(async () => 'unknown' as const),
-    getDependabotCount: mock(async () => null),
+    getRepoEvents: mock(async () => ({ notModified: true as const })),
+    getDependabotAlerts: mock(async () => []),
     ...overrides,
   }
 }
@@ -146,13 +147,27 @@ describe('CardService', () => {
     cleanupTempDir(dir)
   })
 
-  test('getCard records a dependabot snapshot when depCount is not null', async () => {
+  test('getCard records a dependabot snapshot using count from repos.activity', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)
-    const service = createCardService(
-      repos,
-      makeClient({ getDependabotCount: mock(async () => 5) }),
+
+    // Seed 5 security_alert activities so getDependabotCount returns 5
+    const now = new Date()
+    repos.activity.upsertActivities(
+      'alice/alpha',
+      Array.from({ length: 5 }, (_, i) => ({
+        repoFullName: 'alice/alpha',
+        eventType: 'security_alert' as const,
+        actor: 'dependabot',
+        subject: `alert-${i + 1}`,
+        linkUrl: `https://github.com/alice/alpha/security/dependabot/${i + 1}`,
+        occurredAt: now,
+        recordedAt: now,
+        githubEventId: null,
+      })),
     )
+
+    const service = createCardService(repos, makeClient())
 
     repos.cards.pin('alice/alpha')
     await service.getCard('alice/alpha')

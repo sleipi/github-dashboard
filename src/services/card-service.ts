@@ -27,10 +27,9 @@ export type CardService = {
 export function createCardService(repos: Repos, client: GitHubClient): CardService {
   async function fetchAndCache(fullName: string): Promise<void> {
     const now = new Date()
-    const [githubPrs, lastCommitAt, depCount] = await Promise.all([
+    const [githubPrs, lastCommitAt] = await Promise.all([
       client.getPrs(fullName),
       client.getLastCommitDate(fullName),
-      client.getDependabotCount(fullName),
     ])
 
     // CI für die ersten MAX_CI_CHECKS PRs
@@ -63,6 +62,8 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
       updatedAt: new Date(pr.updatedAt),
     }))
 
+    const depCount = repos.activity.getDependabotCount(fullName)
+
     repos.pullRequests.upsertPrs(fullName, [...prsWithCi, ...prsRest])
     repos.pullRequests.upsertCache(fullName, {
       lastCommitAt,
@@ -70,10 +71,8 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
       dependabotCount: depCount,
     })
 
-    if (depCount !== null) {
-      repos.dependabot.maybeRecordSnapshot(fullName, depCount, now, DEP_INTERVAL_MS)
-      repos.dependabot.pruneOld(DEP_PRUNE_DAYS, now)
-    }
+    repos.dependabot.maybeRecordSnapshot(fullName, depCount, now, DEP_INTERVAL_MS)
+    repos.dependabot.pruneOld(DEP_PRUNE_DAYS, now)
   }
 
   async function getCard(fullName: string): Promise<CardData> {
