@@ -1,5 +1,5 @@
 import { createSqliteRepos } from '../../src/db/sqlite-repository.ts'
-import type { PullRequest } from '../../src/db/types.ts'
+import type { Activity, PullRequest } from '../../src/db/types.ts'
 
 const TEST_PAT = 'ghp_testtoken000000000000000000000000'
 const TEST_USER = 'testuser'
@@ -114,6 +114,95 @@ export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): 
     },
   ]
   repos.pullRequests.upsertPrs('alice/awesome-project', prs)
+
+  // Activity data for awesome-project
+  const activities: Array<Omit<Activity, 'id'>> = [
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'pr_merged',
+      actor: '@bob',
+      subject: 'merged #35 — Add dark mode toggle',
+      linkUrl: 'https://github.com/alice/awesome-project/pull/35',
+      occurredAt: new Date(Date.now() - 30 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_001',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'release',
+      actor: '@alice',
+      subject: 'released v2.1.0 — Spring release with many improvements',
+      linkUrl: 'https://github.com/alice/awesome-project/releases/tag/v2.1.0',
+      occurredAt: new Date(Date.now() - 2 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_002',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'push',
+      actor: '@carol',
+      subject: 'pushed 2 commits to main',
+      linkUrl: 'https://github.com/alice/awesome-project/compare/abc...def',
+      occurredAt: new Date(Date.now() - 4 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_003',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'pr_review_approved',
+      actor: '@dave',
+      subject: 'approved #42 — feat: add dark mode support',
+      linkUrl: 'https://github.com/alice/awesome-project/pull/42',
+      occurredAt: new Date(Date.now() - 5 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_004',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'security_alert',
+      actor: '@dependabot',
+      subject: 'security: lodash — Prototype Pollution in the merge function',
+      linkUrl: 'https://github.com/alice/awesome-project/security/dependabot/1',
+      occurredAt: new Date(Date.now() - 6 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: null,
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'pr_abandoned',
+      actor: '@eve',
+      subject: 'closed #34 without merging',
+      linkUrl: 'https://github.com/alice/awesome-project/pull/34',
+      occurredAt: new Date(Date.now() - 8 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_005',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      eventType: 'pr_merged',
+      actor: '@frank',
+      subject: 'merged #33 — Fix critical auth bypass vulnerability in session handling',
+      linkUrl: 'https://github.com/alice/awesome-project/pull/33',
+      occurredAt: new Date(Date.now() - 10 * 60 * 60_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_006',
+    },
+  ]
+  repos.activity.upsertActivities('alice/awesome-project', activities)
+
+  // Seed fresh activity_meta so server never calls GitHub Events API during E2E
+  repos.activity.upsertMeta('alice/awesome-project', {
+    eventsEtag: '"seed-etag-1"',
+    eventsCachedAt: new Date(),
+    pollIntervalSecs: 60,
+    dependabotCachedAt: new Date(),
+  })
+  repos.activity.upsertMeta('alice/another-repo', {
+    eventsEtag: '"seed-etag-2"',
+    eventsCachedAt: new Date(),
+    pollIntervalSecs: 60,
+    dependabotCachedAt: new Date(),
+  })
 
   // Dependabot-History
   const now = new Date()

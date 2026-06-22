@@ -1,6 +1,68 @@
 /// <reference lib="dom" />
 import { expect, test } from '@playwright/test'
 
+test.describe('Activity strip', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+  })
+
+  test('activity strip is visible above the PR list', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    const activityLink = card.locator('a').filter({ hasText: '@bob merged' }).first()
+    await expect(activityLink).toBeVisible()
+  })
+
+  test('activity strip shows at most 5 items', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    const activityLinks = card.locator('a').filter({ hasText: /^@/ })
+    const count = await activityLinks.count()
+    expect(count).toBeLessThanOrEqual(5)
+  })
+
+  test('"N more activities" button appears when overflow', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    await expect(card.locator('button', { hasText: /more activities/ })).toBeVisible()
+  })
+
+  test('clicking "more activities" opens modal with full list', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    await card.locator('button', { hasText: /more activities/ }).click()
+    await expect(page.locator('#modal .modal-overlay')).toBeVisible()
+    await expect(page.locator('#modal').getByText('Activity')).toBeVisible()
+  })
+
+  test('new PR has no highlight when older than 6h', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    const prRows = card.locator('.pr-row')
+    const highlightedRows = await prRows.evaluateAll((rows) =>
+      rows.filter((r) => (r as HTMLElement).style.background.includes('rgba(34,197,94')),
+    )
+    expect(highlightedRows.length).toBe(0)
+  })
+
+  test('PR list shows at most 5 PRs on card', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    const prRows = card.locator('.pr-row')
+    const count = await prRows.count()
+    expect(count).toBeLessThanOrEqual(5)
+  })
+
+  test('activity items are links to GitHub', async ({ page }) => {
+    await page.goto('/')
+    const card = page.locator('.card').first()
+    const firstActivityLink = card.locator('a').filter({ hasText: '@bob merged' }).first()
+    const href = await firstActivityLink.getAttribute('href')
+    expect(href).toContain('github.com')
+    expect(href).toContain('pull/35')
+  })
+})
+
 test.describe('PAT expiry icon', () => {
   test.beforeEach(async ({ page }) => {
     await page.request.post('/api/test/restore-session')
@@ -97,8 +159,14 @@ test.describe('Dashboard', () => {
 
   test('zeigt PRs in der Card', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('feat: add dark mode support')).toBeVisible()
-    await expect(page.getByText('fix: resolve memory leak in worker')).toBeVisible()
+    // Scope to PR rows to avoid collision with activity items that also mention PR titles
+    const card = page.locator('[data-card-name="alice/awesome-project"]')
+    await expect(
+      card.locator('.pr-row').filter({ hasText: 'feat: add dark mode support' }),
+    ).toBeVisible()
+    await expect(
+      card.locator('.pr-row').filter({ hasText: 'fix: resolve memory leak in worker' }),
+    ).toBeVisible()
   })
 
   test('zeigt Dependabot-Alert-Anzahl', async ({ page }) => {
@@ -125,7 +193,10 @@ test.describe('Dashboard', () => {
 
   test('PR-Link öffnet in neuem Tab', async ({ page }) => {
     await page.goto('/')
-    const prLink = page.getByRole('link', { name: /feat: add dark mode/i })
+    // Scope to PR rows to avoid collision with activity items that also reference PR #42
+    const prLink = page
+      .locator('[data-card-name="alice/awesome-project"] .pr-row')
+      .filter({ hasText: 'feat: add dark mode support' })
     await expect(prLink).toHaveAttribute('target', '_blank')
     await expect(prLink).toHaveAttribute('href', /github\.com\/alice\/awesome-project\/pull\/42/)
   })
@@ -295,8 +366,9 @@ test.describe('Dashboard', () => {
 
   test('Dependabot-Link öffnet in neuem Tab', async ({ page }) => {
     await page.goto('/')
+    // Use exact href to avoid matching activity security_alert links (security/dependabot/N)
     const depLink = page.locator(
-      '[data-card-name="alice/awesome-project"] a[href*="security/dependabot"]',
+      '[data-card-name="alice/awesome-project"] a[href="https://github.com/alice/awesome-project/security/dependabot"]',
     )
     await expect(depLink).toHaveAttribute('target', '_blank')
   })
@@ -338,7 +410,12 @@ test.describe('Dashboard', () => {
     await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Neu laden').click()
     await reloadPromise
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).toBeVisible()
-    await expect(page.getByText('feat: add dark mode support')).toBeVisible()
+    // Scope to PR row to avoid collision with activity items referencing the same PR title
+    await expect(
+      page
+        .locator('[data-card-name="alice/awesome-project"] .pr-row')
+        .filter({ hasText: 'feat: add dark mode support' }),
+    ).toBeVisible()
   })
 
   test('Card zeigt Fehlerzustand wenn Neu-Laden fehlschlägt', async ({ page }) => {
