@@ -83,3 +83,15 @@ export type PrModalViewModel = {
   readonly fullName: string
   readonly prs: readonly PrRowModalItem[]
 }
+
+export type ActivityModalItem = {
+  readonly linkUrl: string
+  readonly text: string
+  readonly timeAgo: string
+}
+
+export type ActivityModalViewModel = {
+  readonly fullName: string
+  readonly hasActivities: boolean
+  readonly activities: readonly ActivityModalItem[]
+}

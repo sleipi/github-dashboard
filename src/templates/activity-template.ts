@@ -1,9 +1,28 @@
 import type { Activity } from '../db/types.ts'
 import { escapeHtml, formatRelative } from './formatters.ts'
+import type { ActivityModalItem, ActivityModalViewModel } from './types.ts'
+
+export function toActivityModalViewModel(
+  fullName: string,
+  activities: Activity[],
+  now: Date,
+): ActivityModalViewModel {
+  return {
+    fullName,
+    hasActivities: activities.length > 0,
+    activities: activities.map(
+      (a): ActivityModalItem => ({
+        linkUrl: a.linkUrl,
+        text: `${a.actor} ${a.subject}`,
+        timeAgo: formatRelative(a.occurredAt, now),
+      }),
+    ),
+  }
+}
 
 export function renderActivityModal(fullName: string, activities: Activity[]): string {
-  const now = new Date()
-  const safeFullName = escapeHtml(fullName)
+  const vm = toActivityModalViewModel(fullName, activities, new Date())
+  const safeFullName = escapeHtml(vm.fullName)
   return `
 <div class="modal-overlay"
      onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
@@ -17,9 +36,8 @@ export function renderActivityModal(fullName: string, activities: Activity[]): s
     </div>
     <div style="overflow-y:auto;flex:1;max-height:70vh">
       ${
-        activities.length === 0
-          ? '<div style="padding:20px;color:#8b949e;font-size:13px">No recent activity.</div>'
-          : activities
+        vm.hasActivities
+          ? vm.activities
               .map(
                 (a) => `
       <a href="${escapeHtml(a.linkUrl)}" target="_blank" rel="noopener noreferrer"
@@ -27,12 +45,13 @@ export function renderActivityModal(fullName: string, activities: Activity[]): s
                 border-bottom:1px solid #21262d;text-decoration:none;color:inherit"
          onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background=''">
         <span style="font-size:12px;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">
-          ${escapeHtml(`${a.actor} ${a.subject}`)}
+          ${escapeHtml(a.text)}
         </span>
-        <span style="font-size:11px;color:#6e7681;flex-shrink:0">${formatRelative(a.occurredAt, now)}</span>
+        <span style="font-size:11px;color:#6e7681;flex-shrink:0">${a.timeAgo}</span>
       </a>`,
               )
               .join('')
+          : '<div style="padding:20px;color:#8b949e;font-size:13px">No recent activity.</div>'
       }
     </div>
   </div>
