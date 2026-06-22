@@ -97,3 +97,64 @@ describe('renderRepoModal', () => {
     expect(matches.length).toBe(150)
   })
 })
+
+describe('toRepoListItem — checkbox and language properties', () => {
+  const CHECKBOX_SVG =
+    '<svg width="9" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>'
+
+  test('checkboxChecked is "1" when pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), true)
+    expect(vm.checkboxChecked).toBe('1')
+  })
+
+  test('checkboxChecked is "0" when not pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), false)
+    expect(vm.checkboxChecked).toBe('0')
+  })
+
+  test('checkboxBorderColor is green when pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), true)
+    expect(vm.checkboxBorderColor).toBe('#238636')
+  })
+
+  test('checkboxBorderColor is grey when not pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), false)
+    expect(vm.checkboxBorderColor).toBe('#30363d')
+  })
+
+  test('checkboxBackground is green when pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), true)
+    expect(vm.checkboxBackground).toBe('#238636')
+  })
+
+  test('checkboxBackground is transparent when not pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), false)
+    expect(vm.checkboxBackground).toBe('transparent')
+  })
+
+  test('checkboxSvg contains SVG markup when pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), true)
+    expect(vm.checkboxSvg).toBe(CHECKBOX_SVG)
+  })
+
+  test('checkboxSvg is empty string when not pinned', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo'), false)
+    expect(vm.checkboxSvg).toBe('')
+  })
+
+  test('languageDisplay is " · TypeScript" when language is TypeScript', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo', { language: 'TypeScript' }), false)
+    expect(vm.languageDisplay).toBe(' · TypeScript')
+  })
+
+  test('languageDisplay is empty string when language is null', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo', { language: null }), false)
+    expect(vm.languageDisplay).toBe('')
+  })
+
+  test('languageDisplay escapes HTML in language name', () => {
+    const vm = toRepoListItem(makeRepo('alice/foo', { language: '<script>' }), false)
+    expect(vm.languageDisplay).not.toContain('<script>')
+    expect(vm.languageDisplay).toContain('&lt;script&gt;')
+  })
+})

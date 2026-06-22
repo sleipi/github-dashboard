@@ -2,6 +2,9 @@ import type { GitHubRepo } from '../github/github-client.ts'
 import { escapeHtml, formatRelative } from './formatters.ts'
 import type { RepoListItemViewModel } from './types.ts'
 
+const CHECKBOX_SVG =
+  '<svg width="9" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>'
+
 export function toRepoListItem(repo: GitHubRepo, isPinned: boolean): RepoListItemViewModel {
   return {
     fullName: repo.fullName,
@@ -12,6 +15,11 @@ export function toRepoListItem(repo: GitHubRepo, isPinned: boolean): RepoListIte
     language: repo.language,
     starsDisplay: repo.stargazersCount > 0 ? String(repo.stargazersCount) : null,
     updatedAt: formatRelative(new Date(repo.updatedAt)),
+    checkboxChecked: isPinned ? '1' : '0',
+    checkboxBorderColor: isPinned ? '#238636' : '#30363d',
+    checkboxBackground: isPinned ? '#238636' : 'transparent',
+    checkboxSvg: isPinned ? CHECKBOX_SVG : '',
+    languageDisplay: repo.language ? ` · ${escapeHtml(repo.language)}` : '',
   }
 }
 
@@ -27,12 +35,12 @@ export function renderRepoRow(vm: RepoListItemViewModel): string {
      hx-swap="none"
      hx-on::after-request="htmx.trigger(document.body,'cardsChanged')"
      onclick="_toggleCheck(this)">
-  <div class="check" data-checked="${vm.isPinned ? '1' : '0'}"
+  <div class="check" data-checked="${vm.checkboxChecked}"
        style="width:16px;height:16px;border-radius:3px;flex-shrink:0;
-       border:1.5px solid ${vm.isPinned ? '#238636' : '#30363d'};
-       background:${vm.isPinned ? '#238636' : 'transparent'};
+       border:1.5px solid ${vm.checkboxBorderColor};
+       background:${vm.checkboxBackground};
        display:flex;align-items:center;justify-content:center">
-    ${vm.isPinned ? '<svg width="9" height="9" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>' : ''}
+    ${vm.checkboxSvg}
   </div>
   <div style="flex:1;min-width:0">
     <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -40,7 +48,7 @@ export function renderRepoRow(vm: RepoListItemViewModel): string {
       ${vm.isPrivate ? '<span class="badge" style="margin-left:6px">Private</span>' : ''}
     </div>
     <div style="font-size:11px;color:#6e7681;margin-top:2px">
-      ${vm.updatedAt}${vm.language ? ` · ${escapeHtml(vm.language)}` : ''}
+      ${vm.updatedAt}${vm.languageDisplay}
     </div>
   </div>
   ${vm.starsDisplay ? `<span style="font-size:11px;color:#8b949e">★ ${vm.starsDisplay}</span>` : ''}

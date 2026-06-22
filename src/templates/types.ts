@@ -54,4 +54,9 @@ export type RepoListItemViewModel = {
   readonly language: string | null
   readonly starsDisplay: string | null
   readonly updatedAt: string
+  readonly checkboxChecked: '0' | '1'
+  readonly checkboxBorderColor: string
+  readonly checkboxBackground: string
+  readonly checkboxSvg: string
+  readonly languageDisplay: string
 }
