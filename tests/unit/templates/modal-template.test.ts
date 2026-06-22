@@ -17,17 +17,17 @@ const makeRepo = (fullName: string, opts: Partial<GitHubRepo> = {}): GitHubRepo 
 }
 
 describe('toRepoListItem', () => {
-  test('setzt isPinned korrekt wenn Repo gepinnt ist', () => {
+  test('sets isPinned correctly when repo is pinned', () => {
     const vm = toRepoListItem(makeRepo('alice/foo'), true)
     expect(vm.isPinned).toBe(true)
   })
 
-  test('setzt isPinned korrekt wenn Repo nicht gepinnt ist', () => {
+  test('sets isPinned correctly when repo is not pinned', () => {
     const vm = toRepoListItem(makeRepo('alice/foo'), false)
     expect(vm.isPinned).toBe(false)
   })
 
-  test('übergibt isPrivate und language', () => {
+  test('passes isPrivate and language', () => {
     const vm = toRepoListItem(makeRepo('alice/priv', { isPrivate: true, language: 'Go' }), false)
     expect(vm.isPrivate).toBe(true)
     expect(vm.language).toBe('Go')
@@ -38,56 +38,56 @@ describe('renderRepoModal', () => {
   const repo = makeRepo('alice/foo')
   const pinnedRepo = makeRepo('alice/bar')
 
-  test('gepinntes Repo hat data-checked="1"', () => {
+  test('pinned repo has data-checked="1"', () => {
     const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
     expect(html).toContain('data-checked="1"')
   })
 
-  test('ungepinntes Repo hat data-checked="0"', () => {
+  test('unpinned repo has data-checked="0"', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).toContain('data-checked="0"')
   })
 
-  test('gepinntes Repo enthält SVG-Häkchen', () => {
+  test('pinned repo contains SVG checkmark', () => {
     const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
     expect(html).toContain('<svg')
     expect(html).toContain('stroke="white"')
   })
 
-  test('ungepinntes Repo enthält kein SVG-Häkchen', () => {
+  test('unpinned repo contains no SVG checkmark', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).not.toContain('<svg')
   })
 
-  test('gepinntes Repo hat grünen Hintergrund im check-div', () => {
+  test('pinned repo has green background on check div', () => {
     const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
     expect(html).toContain('background:#238636')
   })
 
-  test('ungepinntes Repo hat transparenten Hintergrund im check-div', () => {
+  test('unpinned repo has transparent background on check div', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).toContain('background:transparent')
   })
 
-  test('Reponame erscheint im HTML', () => {
+  test('repo name appears in HTML', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).toContain('alice/foo')
   })
 
-  test('onclick ruft _toggleCheck auf', () => {
+  test('onclick calls _toggleCheck', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).toContain('_toggleCheck(this)')
   })
 
-  test('Suchfeld ist vorhanden', () => {
+  test('search field is present', () => {
     const html = renderRepoModal([repo], new Set())
     expect(html).toContain('id="repo-search"')
   })
 
-  test('Privates Repo zeigt Privat-Badge', () => {
+  test('private repo shows Private badge', () => {
     const privateRepo = makeRepo('alice/secret', { isPrivate: true })
     const html = renderRepoModal([privateRepo], new Set())
-    expect(html).toContain('Privat')
+    expect(html).toContain('Private')
   })
 
   test('renders all repos without a cap', () => {

@@ -1,5 +1,5 @@
 import type { CardRepo } from '../db/cards/card-repo.ts'
-import type { GitHubClient } from '../github/github-client.ts'
+import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
 import type { CardService } from '../services/card-service.ts'
 import { renderRepoModal, renderRepoRow, toRepoListItem } from '../templates/modal-template.ts'
 import { html } from './route-handler.ts'
@@ -24,9 +24,18 @@ export function createModalRoutes(
       async handle(_req, url) {
         const q = url.searchParams.get('q')?.trim() ?? ''
         const pinned = new Set(cardRepo.getPinned().map((r) => r.fullName))
-        const repos = q.length >= 2 ? await client.searchRepos(q) : await cardService.getAllRepos()
+        let results: GitHubRepo[] = []
+        if (q.length >= 2) {
+          try {
+            results = await client.searchRepos(q)
+          } catch {
+            results = []
+          }
+        } else {
+          results = await cardService.getAllRepos()
+        }
         return html(
-          repos.map((r) => renderRepoRow(toRepoListItem(r, pinned.has(r.fullName)))).join(''),
+          results.map((r) => renderRepoRow(toRepoListItem(r, pinned.has(r.fullName)))).join(''),
         )
       },
     },
