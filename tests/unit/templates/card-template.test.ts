@@ -119,7 +119,7 @@ describe('renderCard', () => {
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
 
-  test('zeigt Security-Badge mit "0" und grünem Tooltip wenn dependabotCount null ist (treated as 0)', () => {
+  test('shows security badge with "0" and green tooltip when dependabotCount is null (treated as 0)', () => {
     const data: CardData = {
       ...emptyCardData('alice/no-dep'),
       cache: { ...emptyCardData('alice/no-dep').cache, dependabotCount: null },
@@ -129,7 +129,7 @@ describe('renderCard', () => {
     expect(html).toContain('No Dependabot alerts')
   })
 
-  test('zeigt weitere-PRs-Button wenn mehr als MAX_PRS_ON_CARD vorhanden', () => {
+  test('shows more-PRs button when more than MAX_PRS_ON_CARD exist', () => {
     const prs = Array.from({ length: 6 }, (_, i) => ({
       repoFullName: 'alice/busy',
       number: i + 1,
@@ -150,7 +150,7 @@ describe('renderCard', () => {
 })
 
 describe('DASHBOARD_CSS', () => {
-  test('htmx-indicator hat pointer-events:none damit unsichtbarer Overlay keine Klicks blockiert', () => {
+  test('htmx-indicator has pointer-events:none so invisible overlay does not block clicks', () => {
     const rule = DASHBOARD_CSS.match(/\.htmx-indicator\s*\{[^}]+\}/)?.[0] ?? ''
     expect(rule).toContain('pointer-events: none')
   })

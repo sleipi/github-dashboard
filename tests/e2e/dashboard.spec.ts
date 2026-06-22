@@ -138,28 +138,28 @@ test.describe('PAT expiry icon', () => {
   })
 })
 
-// Der Server läuft mit der seeded DB aus seed-db.ts
-// Enthält: 2 gepinnte Repos, 2 PRs für alice/awesome-project
+// The server runs with the seeded DB from seed-db.ts
+// Contains: 2 pinned repos, 2 PRs for alice/awesome-project
 
 test.describe('Dashboard', () => {
-  // Seeded Session wiederherstellen damit Dashboard-Tests unabhängig von Auth-Tests laufen
+  // Restore seeded session so dashboard tests run independently of auth tests
   test.beforeEach(async ({ page }) => {
     await page.request.post('/api/test/restore-session')
   })
 
-  test('zeigt Dashboard wenn eingeloggt', async ({ page }) => {
+  test('shows dashboard when logged in', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByText('Dashboard')).toBeVisible()
     await expect(page.getByText('testuser')).toBeVisible()
   })
 
-  test('zeigt gepinnte Repos als Cards', async ({ page }) => {
+  test('shows pinned repos as cards', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByText('awesome-project')).toBeVisible()
     await expect(page.getByText('another-repo')).toBeVisible()
   })
 
-  test('zeigt PRs in der Card', async ({ page }) => {
+  test('shows PRs in the card', async ({ page }) => {
     await page.goto('/')
     // Scope to PR rows to avoid collision with activity items that also mention PR titles
     const card = page.locator('[data-card-name="alice/awesome-project"]')
@@ -171,29 +171,29 @@ test.describe('Dashboard', () => {
     ).toBeVisible()
   })
 
-  test('zeigt Dependabot-Alert-Anzahl', async ({ page }) => {
+  test('shows Dependabot alert count', async ({ page }) => {
     await page.goto('/')
-    // 3 aktuelle Alerts — über title-Attribut suchen, da '3' auch in PR-Nummern vorkommt
+    // 3 current alerts — search by title attribute since '3' also appears in PR numbers
     await expect(
       page.locator('[data-card-name="alice/awesome-project"] [title="3 Alerts"]'),
     ).toBeVisible()
   })
 
-  test('"Repo hinzufügen" öffnet Modal', async ({ page }) => {
+  test('"Add repo" opens modal', async ({ page }) => {
     await page.goto('/')
-    // HTMX Modal öffnen — da kein Live-GitHub, wird der Request fehlschlagen
-    // Wir testen nur dass der Button existiert und anklickbar ist
-    const btn = page.getByRole('button', { name: /Repo hinzufügen/i })
+    // Open HTMX modal — no live GitHub, so the request will fail
+    // We only test that the button exists and is clickable
+    const btn = page.getByRole('button', { name: /Add repo/i })
     await expect(btn).toBeVisible()
   })
 
-  test('Abmelden leitet zur Setup-Seite weiter', async ({ page }) => {
+  test('Sign out redirects to setup page', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /Abmelden/i }).click()
+    await page.getByRole('button', { name: /Sign out/i }).click()
     await expect(page.getByText('Personal Access Token')).toBeVisible()
   })
 
-  test('PR-Link öffnet in neuem Tab', async ({ page }) => {
+  test('PR link opens in new tab', async ({ page }) => {
     await page.goto('/')
     // Scope to PR rows to avoid collision with activity items that also reference PR #42
     const prLink = page
@@ -203,25 +203,25 @@ test.describe('Dashboard', () => {
     await expect(prLink).toHaveAttribute('href', /github\.com\/alice\/awesome-project\/pull\/42/)
   })
 
-  test('Aktualisieren-Button ist sichtbar', async ({ page }) => {
+  test('Refresh button is visible', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('button', { name: /Aktualisieren/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Refresh/i })).toBeVisible()
   })
 
-  test('Entfernen-Button entfernt die Card aus dem Dashboard', async ({ page }) => {
+  test('Remove button removes the card from the dashboard', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).toBeVisible()
-    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Entfernen').click()
+    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Remove').click()
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).not.toBeVisible({
       timeout: 5000,
     })
     await expect(page.locator('[data-card-name="alice/another-repo"]')).toBeVisible()
   })
 
-  test('repo-search filtert Repos im Modal', async ({ page }) => {
+  test('repo-search filters repos in modal', async ({ page }) => {
     await page.goto('/')
 
-    // Modal-HTML direkt injizieren (umgeht GitHub-API-Call)
+    // Inject modal HTML directly (bypasses GitHub API call)
     await page.evaluate(() => {
       const modal = document.getElementById('modal')
       if (modal) {
@@ -229,7 +229,7 @@ test.describe('Dashboard', () => {
           <div class="modal-overlay">
             <div class="modal" style="display:flex;flex-direction:column">
               <div style="padding:10px 14px;border-bottom:1px solid #21262d">
-                <input id="repo-search" type="text" placeholder="Repo suchen…"
+                <input id="repo-search" type="text" placeholder="Search repos…"
                        style="width:100%"/>
               </div>
               <div>
@@ -249,7 +249,7 @@ test.describe('Dashboard', () => {
     await expect(page.locator('[data-repo-name="bob/totally-different"]')).toBeHidden()
   })
 
-  test('repo-search behält flex-Layout nach Filterung', async ({ page }) => {
+  test('repo-search keeps flex layout after filtering', async ({ page }) => {
     await page.goto('/')
 
     await page.evaluate(() => {
@@ -272,7 +272,7 @@ test.describe('Dashboard', () => {
       }
     })
 
-    // Filtern und wieder leeren → display muss flex bleiben
+    // Filter then clear → display must remain flex
     await page.fill('#repo-search', 'foo')
     await page.fill('#repo-search', '')
 
@@ -282,7 +282,7 @@ test.describe('Dashboard', () => {
     expect(displayValue).toBe('flex')
   })
 
-  test('_toggleCheck setzt Checkmark beim ersten Klick', async ({ page }) => {
+  test('_toggleCheck sets checkmark on first click', async ({ page }) => {
     await page.goto('/')
 
     await page.evaluate(() => {
@@ -310,7 +310,7 @@ test.describe('Dashboard', () => {
     expect(hasSvg).toBe(1)
   })
 
-  test('_toggleCheck entfernt Checkmark beim zweiten Klick', async ({ page }) => {
+  test('_toggleCheck removes checkmark on second click', async ({ page }) => {
     await page.goto('/')
 
     await page.evaluate(() => {
@@ -342,31 +342,31 @@ test.describe('Dashboard', () => {
     expect(hasSvg).toBe(0)
   })
 
-  // --- Kartendetails ---
+  // --- Card details ---
 
-  test('zeigt "Keine offenen PRs" wenn Repo keine PRs hat', async ({ page }) => {
+  test('shows "No open PRs" when repo has no PRs', async ({ page }) => {
     await page.goto('/')
     await expect(
-      page.locator('[data-card-name="alice/another-repo"]').getByText('✓ Keine offenen PRs'),
+      page.locator('[data-card-name="alice/another-repo"]').getByText('✓ No open PRs'),
     ).toBeVisible()
   })
 
-  test('zeigt Dependabot-Trend', async ({ page }) => {
+  test('shows Dependabot trend', async ({ page }) => {
     await page.goto('/')
-    // Seed: 5 Alerts vor 8 Tagen → 3 jetzt → Wochentrend -2 → formatTrend: "(-2)"
+    // Seed: 5 alerts 8 days ago → 3 now → weekly trend -2 → formatTrend: "(-2)"
     await expect(
       page.locator('[data-card-name="alice/awesome-project"]').getByText('(-2)'),
     ).toBeVisible()
   })
 
-  test('Repo-Link auf der Card öffnet in neuem Tab', async ({ page }) => {
+  test('repo link on the card opens in new tab', async ({ page }) => {
     await page.goto('/')
     const repoLink = page.locator('[data-card-name="alice/awesome-project"] .card-header a').first()
     await expect(repoLink).toHaveAttribute('target', '_blank')
     await expect(repoLink).toHaveAttribute('href', 'https://github.com/alice/awesome-project')
   })
 
-  test('Dependabot-Link öffnet in neuem Tab', async ({ page }) => {
+  test('Dependabot link opens in new tab', async ({ page }) => {
     await page.goto('/')
     // Use exact href to avoid matching activity security_alert links (security/dependabot/N)
     const depLink = page.locator(
@@ -375,41 +375,41 @@ test.describe('Dashboard', () => {
     await expect(depLink).toHaveAttribute('target', '_blank')
   })
 
-  test('zeigt Draft-Badge für Draft-PRs', async ({ page }) => {
+  test('shows Draft badge for draft PRs', async ({ page }) => {
     await page.goto('/')
-    // PR #40 ist als draft:true geseedet
+    // PR #40 is seeded as draft:true
     await expect(
       page.locator('[data-card-name="alice/awesome-project"] .badge').filter({ hasText: 'Draft' }),
     ).toBeVisible()
   })
 
-  test('zeigt "+ weiterer PR"-Button wenn mehr als 6 PRs vorhanden sind', async ({ page }) => {
+  test('shows "+ more PRs" button when more than 6 PRs exist', async ({ page }) => {
     await page.goto('/')
-    // 7 PRs geseedet, MAX_PRS_ON_CARD=5 → 2 Overflow
+    // 7 PRs seeded, MAX_PRS_ON_CARD=5 → 2 overflow
     await expect(
-      page.locator('[data-card-name="alice/awesome-project"]').getByText('+ 2 weitere PRs'),
+      page.locator('[data-card-name="alice/awesome-project"]').getByText('+ 2 more PRs'),
     ).toBeVisible()
   })
 
-  // --- HTMX-Interaktionen ---
+  // --- HTMX interactions ---
 
-  test('Aktualisieren-Button lädt alle Cards neu', async ({ page }) => {
+  test('Refresh button reloads all cards', async ({ page }) => {
     await page.goto('/')
     const refreshPromise = page.waitForResponse(
       (r) => r.url().includes('/api/cards') && !r.url().includes('reorder') && r.status() === 200,
     )
-    await page.getByRole('button', { name: /Aktualisieren/i }).click()
+    await page.getByRole('button', { name: /Refresh/i }).click()
     await refreshPromise
     await expect(page.getByText('awesome-project')).toBeVisible()
     await expect(page.getByText('another-repo')).toBeVisible()
   })
 
-  test('Card-Reload-Button lädt die einzelne Card neu', async ({ page }) => {
+  test('card reload button reloads the individual card', async ({ page }) => {
     await page.goto('/')
     const reloadPromise = page.waitForResponse(
       (r) => r.url().includes('/api/card/alice/awesome-project') && r.status() === 200,
     )
-    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Neu laden').click()
+    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Refresh').click()
     await reloadPromise
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).toBeVisible()
     // Scope to PR row to avoid collision with activity items referencing the same PR title
@@ -420,28 +420,28 @@ test.describe('Dashboard', () => {
     ).toBeVisible()
   })
 
-  test('Card zeigt Fehlerzustand wenn Neu-Laden fehlschlägt', async ({ page }) => {
+  test('card shows error state when reload fails', async ({ page }) => {
     await page.goto('/')
-    // GET /api/card/:owner/:repo mit Fehlerantwort mocken
+    // Mock GET /api/card/:owner/:repo with an error response
     await page.route('**/api/card/alice/awesome-project', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'text/html',
         body: `<div class="card" data-card-name="alice/awesome-project" style="border-color:#f85149">
           <div class="card-header"><span>alice/awesome-project</span></div>
-          <div class="card-body"><span>Verbindung zu GitHub fehlgeschlagen</span></div>
+          <div class="card-body"><span>Connection to GitHub failed</span></div>
         </div>`,
       }),
     )
-    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Neu laden').click()
-    await expect(page.getByText('Verbindung zu GitHub fehlgeschlagen')).toBeVisible({
+    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Refresh').click()
+    await expect(page.getByText('Connection to GitHub failed')).toBeVisible({
       timeout: 5000,
     })
   })
 
-  // --- Modal-Lifecycle ---
+  // --- Modal lifecycle ---
 
-  test('Modal schließt bei Klick auf ×-Button', async ({ page }) => {
+  test('modal closes on click of × button', async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => {
       const modal = document.getElementById('modal')
@@ -463,7 +463,7 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Test Modal')).not.toBeVisible()
   })
 
-  test('Modal schließt bei Klick auf den Overlay', async ({ page }) => {
+  test('modal closes on click of overlay', async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => {
       const modal = document.getElementById('modal')
@@ -478,7 +478,7 @@ test.describe('Dashboard', () => {
       }
     })
     await expect(page.getByText('Test Modal')).toBeVisible()
-    // dispatchEvent auf dem Overlay selbst damit event.target===this gilt
+    // dispatchEvent on the overlay itself so event.target===this holds
     await page.evaluate(() => {
       const overlay = document.querySelector('.modal-overlay') as HTMLElement
       overlay?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
@@ -486,7 +486,7 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Test Modal')).not.toBeVisible()
   })
 
-  test('Modal schließt mit Escape-Taste', async ({ page }) => {
+  test('modal closes with Escape key', async ({ page }) => {
     await page.goto('/')
     await page.evaluate(() => {
       const modal = document.getElementById('modal')
@@ -502,26 +502,23 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Test Modal')).not.toBeVisible()
   })
 
-  test('PR-Modal öffnet sich bei Klick auf "+ weiterer PR"-Button', async ({ page }) => {
+  test('PR modal opens on click of "+ more PRs" button', async ({ page }) => {
     await page.goto('/')
     const modalPromise = page.waitForResponse(
       (r) => r.url().includes('/api/prs/alice/awesome-project') && r.status() === 200,
     )
-    await page
-      .locator('[data-card-name="alice/awesome-project"]')
-      .getByText('+ 2 weitere PRs')
-      .click()
+    await page.locator('[data-card-name="alice/awesome-project"]').getByText('+ 2 more PRs').click()
     await modalPromise
-    // Modal-Header und der Overflow-PR (nicht auf der Card sichtbar) prüfen
+    // Check modal header and the overflow PR (not visible on the card)
     await expect(page.locator('#modal').getByText('Pull Requests')).toBeVisible()
     await expect(page.getByText('feat: add export functionality')).toBeVisible()
   })
 
-  // --- Drag & Drop ---
+  // --- Drag & drop ---
 
-  test('Cards können per Drag & Drop umsortiert werden', async ({ page }) => {
+  test('cards can be reordered via drag and drop', async ({ page }) => {
     await page.goto('/')
-    // Initialreihenfolge: awesome-project (0), another-repo (1)
+    // Initial order: awesome-project (0), another-repo (1)
     const card1 = page.locator('[data-card-name="alice/awesome-project"]')
     const card2 = page.locator('[data-card-name="alice/another-repo"]')
 
@@ -536,31 +533,31 @@ test.describe('Dashboard', () => {
     await reorderPromise
     await cardsRefreshPromise
 
-    // Nach dem Tauschen: another-repo vorne, awesome-project hinten
+    // After swap: another-repo first, awesome-project second
     const cards = page.locator('[data-card-name]')
     await expect(cards.nth(0)).toHaveAttribute('data-card-name', 'alice/another-repo')
     await expect(cards.nth(1)).toHaveAttribute('data-card-name', 'alice/awesome-project')
   })
 
-  // --- Leer-Zustand ---
+  // --- Empty state ---
 
-  test('zeigt Leerstate wenn alle Repos entfernt wurden', async ({ page }) => {
+  test('shows empty state when all repos are removed', async ({ page }) => {
     await page.goto('/')
 
     // Unpin first card and wait for all cardsChanged HTMX refreshes to settle
-    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Entfernen').click()
+    await page.locator('[data-card-name="alice/awesome-project"]').getByTitle('Remove').click()
     await page.waitForLoadState('networkidle')
     await expect(page.locator('[data-card-name="alice/awesome-project"]')).not.toBeVisible({
       timeout: 5000,
     })
 
     // Unpin second card and wait for all cardsChanged HTMX refreshes to settle
-    await page.locator('[data-card-name="alice/another-repo"]').getByTitle('Entfernen').click()
+    await page.locator('[data-card-name="alice/another-repo"]').getByTitle('Remove').click()
     await page.waitForLoadState('networkidle')
     await expect(page.locator('[data-card-name="alice/another-repo"]')).not.toBeVisible({
       timeout: 5000,
     })
 
-    await expect(page.getByText('Noch keine Repos gepinnt')).toBeVisible()
+    await expect(page.getByText('No repos pinned yet')).toBeVisible()
   })
 })

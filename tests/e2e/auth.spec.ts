@@ -1,41 +1,41 @@
 import { expect, test } from '@playwright/test'
 
-// Diese Tests laufen gegen eine leere DB (ohne geseedetes Token)
-// Dafür starten wir einen separaten Server mit einer leeren DB.
-// Da playwright.config.ts die Test-DB seedet, müssen wir hier
-// die geseedete DB temporär "leeren" — einfachste Lösung:
-// Auth-Tests testen Verhalten auf der Setup-Seite, die sichtbar
-// ist wenn auth.deleteToken() aufgerufen wird.
+// These tests run against an empty DB (without a seeded token).
+// We start a separate server with an empty DB.
+// Since playwright.config.ts seeds the test DB, we temporarily
+// "empty" it here — simplest approach:
+// Auth tests verify behaviour on the setup page, which is visible
+// when auth.deleteToken() is called.
 
-test.describe('Setup-Seite', () => {
-  // Abmelden damit Setup-Seite erscheint
+test.describe('Setup page', () => {
+  // Sign out so the setup page appears
   test.beforeEach(async ({ page }) => {
-    // Logout via POST /api/auth mit _method=DELETE
+    // Logout via POST /api/auth with _method=DELETE
     await page.request.post('/api/auth', {
       form: { _method: 'DELETE' },
     })
   })
 
-  test('zeigt Setup-Formular wenn nicht eingeloggt', async ({ page }) => {
+  test('shows setup form when not logged in', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByText('Personal Access Token')).toBeVisible()
     await expect(page.locator('input[name="pat"]')).toBeVisible()
   })
 
-  test('zeigt Fehlermeldung bei leerem Token', async ({ page }) => {
+  test('shows error message for empty token', async ({ page }) => {
     await page.goto('/')
     await page.locator('button[type="submit"]').click()
-    // HTML5 required validation verhindert Submit — kein Server-Error nötig
-    // Der Browser zeigt native Validation an
+    // HTML5 required validation prevents submit — no server error needed
+    // The browser shows native validation
     await expect(page.locator('input[name="pat"]:invalid')).toBeVisible()
   })
 
-  test('zeigt Fehlermeldung bei ungültigem Token', async ({ page }) => {
+  test('shows error message for invalid token', async ({ page }) => {
     await page.goto('/')
-    await page.fill('input[name="pat"]', 'ghp_ungueltig')
+    await page.fill('input[name="pat"]', 'ghp_invalid')
     await page.locator('button[type="submit"]').click()
-    // Server antwortet mit 401 und Fehlertext
-    // Da wir keinen Live-GitHub-Zugriff haben, wird der echte PAT abgelehnt
-    await expect(page.getByText(/ungültig|error|fehler|401/i)).toBeVisible({ timeout: 10_000 })
+    // Server responds with 401 and error text
+    // Since we have no live GitHub access, the real PAT will be rejected
+    await expect(page.getByText(/invalid|error|401/i)).toBeVisible({ timeout: 10_000 })
   })
 })

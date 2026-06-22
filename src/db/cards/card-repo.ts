@@ -5,5 +5,5 @@ export interface CardRepo {
   isPinned(fullName: string): boolean
   pin(fullName: string): void
   unpin(fullName: string): void
-  reorder(fullNames: string[]): void // setzt sort_order nach Array-Position
+  reorder(fullNames: string[]): void // sets sort_order by array position
 }

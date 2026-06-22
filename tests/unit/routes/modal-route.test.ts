@@ -131,4 +131,27 @@ describe('modal routes', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('GET /api/repos/search returns empty response when searchRepos throws', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+    const throwingClient = {
+      ...makeClient(),
+      searchRepos: mock(async () => {
+        throw new Error('rate limited')
+      }),
+    }
+    const routes = createModalRoutes(service, repos.cards, throwingClient)
+    const url = new URL('http://localhost:4242/api/repos/search?q=ab')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    expect(res.status).toBe(200)
+    const body = await res.text()
+    expect(body).toBe('')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

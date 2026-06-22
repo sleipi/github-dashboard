@@ -24,7 +24,7 @@ export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): Rout
         }
 
         const pat = String(form.get('pat') ?? '').trim()
-        if (!pat) return html(renderSetupPage('Bitte Token eingeben'), 400)
+        if (!pat) return html(renderSetupPage('Please enter a token'), 400)
 
         try {
           authRepo.saveToken({ pat, username: '', avatarUrl: '', expiresAt: undefined })
@@ -42,7 +42,7 @@ export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): Rout
           return redirect('/')
         } catch (e) {
           authRepo.deleteToken()
-          const msg = e instanceof Error ? e.message : 'Unbekannter Fehler'
+          const msg = e instanceof Error ? e.message : 'Unknown error'
           return html(renderSetupPage(msg), 401)
         }
       },

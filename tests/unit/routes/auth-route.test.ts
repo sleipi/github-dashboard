@@ -97,7 +97,7 @@ describe('auth routes', () => {
     const body = await res.text()
 
     expect(res.status).toBe(400)
-    expect(body).toContain('Bitte Token eingeben')
+    expect(body).toContain('Please enter a token')
 
     repos.close()
     cleanupTempDir(dir)
@@ -110,7 +110,7 @@ describe('auth routes', () => {
       repos.auth,
       makeClient({
         getUser: mock(async () => {
-          throw new Error('Token ungültig (401)')
+          throw new Error('Invalid token (401)')
         }),
       }),
     )
@@ -125,7 +125,7 @@ describe('auth routes', () => {
     const body = await res.text()
 
     expect(res.status).toBe(401)
-    expect(body).toContain('Token ungültig (401)')
+    expect(body).toContain('Invalid token (401)')
     expect(repos.auth.getToken()).toBeNull()
 
     repos.close()
