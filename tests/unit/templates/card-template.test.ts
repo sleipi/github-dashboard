@@ -76,69 +76,130 @@ describe('toCardViewModel', () => {
     expect(vm.depLabel).toBe('99+ open Dependabot alerts')
   })
 
-  test('borderColor is bright green and has glow for a commit < 1 hour ago', () => {
-    const recentData: CardData = {
+  test('borderStyle has grey border and no glow when lastCommitAt is null', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/unknown'),
+      cache: { ...emptyCardData('alice/unknown').cache, lastCommitAt: null },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.borderStyle).toBe('border-color:#30363d')
+  })
+
+  test('borderStyle has green border and glow for a commit < 1 hour ago', () => {
+    const data: CardData = {
       ...emptyCardData('alice/fresh'),
       cache: {
         ...emptyCardData('alice/fresh').cache,
-        lastCommitAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
+        lastCommitAt: new Date(Date.now() - 10 * 60 * 1000),
       },
     }
-    const vm = toCardViewModel(recentData, [])
-    expect(vm.borderColor).toBe('#2ea043')
-    expect(vm.borderGlow).toBe('0 0 0 1px #2ea043')
+    const vm = toCardViewModel(data, [])
+    expect(vm.borderStyle).toContain('border-color:#2ea043')
+    expect(vm.borderStyle).toContain('box-shadow')
   })
 
-  test('borderColor is medium green for a commit < 1 day ago', () => {
-    const recentData: CardData = {
+  test('borderStyle has medium-green border for a commit < 1 day ago', () => {
+    const data: CardData = {
       ...emptyCardData('alice/today'),
       cache: {
         ...emptyCardData('alice/today').cache,
-        lastCommitAt: new Date(Date.now() - 2 * 3_600_000), // 2 hours ago
+        lastCommitAt: new Date(Date.now() - 2 * 3_600_000),
       },
     }
-    const vm = toCardViewModel(recentData, [])
-    expect(vm.borderColor).toBe('#1a6b32')
-    expect(vm.borderGlow).toBe('0 0 0 1px #1a6b3266')
+    const vm = toCardViewModel(data, [])
+    expect(vm.borderStyle).toContain('border-color:#1a6b32')
   })
 
-  test('borderColor is dark green for a commit < 3 days ago', () => {
-    const recentData: CardData = {
+  test('borderStyle has dark-green border for a commit < 3 days ago', () => {
+    const data: CardData = {
       ...emptyCardData('alice/recent'),
       cache: {
         ...emptyCardData('alice/recent').cache,
-        lastCommitAt: new Date(Date.now() - 2 * 86_400_000), // 2 days ago
+        lastCommitAt: new Date(Date.now() - 2 * 86_400_000),
       },
     }
-    const vm = toCardViewModel(recentData, [])
-    expect(vm.borderColor).toBe('#1a4228')
-    expect(vm.borderGlow).toBe('')
+    const vm = toCardViewModel(data, [])
+    expect(vm.borderStyle).toContain('border-color:#1a4228')
   })
 
-  test('borderColor is gray for a commit > 3 days ago', () => {
-    const recentData: CardData = {
+  test('borderStyle has grey border for a commit > 3 days ago', () => {
+    const data: CardData = {
       ...emptyCardData('alice/old'),
       cache: {
         ...emptyCardData('alice/old').cache,
-        lastCommitAt: new Date(Date.now() - 7 * 86_400_000), // 7 days ago
+        lastCommitAt: new Date(Date.now() - 7 * 86_400_000),
       },
     }
-    const vm = toCardViewModel(recentData, [])
-    expect(vm.borderColor).toBe('#30363d')
-    expect(vm.borderGlow).toBe('')
+    const vm = toCardViewModel(data, [])
+    expect(vm.borderStyle).toBe('border-color:#30363d')
   })
 
-  test('borderColor is gray when lastCommitAt is null', () => {
-    const recentData: CardData = {
-      ...emptyCardData('alice/unknown'),
-      cache: {
-        ...emptyCardData('alice/unknown').cache,
-        lastCommitAt: null,
-      },
+  test('loadingId replaces slash and special chars with hyphens', () => {
+    const vm = toCardViewModel(emptyCardData('owner/repo'), [])
+    expect(vm.loadingId).toBe('ld-owner-repo')
+  })
+
+  test('hasActivities is false when activities array is empty', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    expect(vm.hasActivities).toBe(false)
+  })
+
+  test('hasActivities is true when activities are present', () => {
+    const activity: Activity = {
+      id: 1,
+      repoFullName: 'alice/alpha',
+      eventType: 'pr_merged',
+      actor: 'bob',
+      subject: 'merged #1',
+      linkUrl: 'https://github.com/alice/alpha/pull/1',
+      occurredAt: new Date(),
+      recordedAt: new Date(),
+      githubEventId: 'evt_1',
     }
-    const vm = toCardViewModel(recentData, [])
-    expect(vm.borderColor).toBe('#30363d')
-    expect(vm.borderGlow).toBe('')
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [activity])
+    expect(vm.hasActivities).toBe(true)
+  })
+})
+
+describe('PrRowViewModel — highlightStyle', () => {
+  const basePr = (overrides: Partial<{ createdAt: Date; number: number; prUrl: string }> = {}) => ({
+    repoFullName: 'alice/alpha',
+    number: overrides.number ?? 1,
+    title: 'Fix bug',
+    draft: false,
+    ciStatus: 'success' as const,
+    prUrl: overrides.prUrl ?? 'https://github.com/alice/alpha/pull/1',
+    creator: 'alice',
+    labels: [],
+    createdAt: overrides.createdAt ?? new Date(),
+    updatedAt: new Date(),
+  })
+
+  test('highlightStyle is empty string for PRs older than 6 hours', () => {
+    const pr = basePr({ createdAt: new Date(Date.now() - 7 * 3_600_000) })
+    const vm = toCardViewModel({ ...emptyCardData('alice/alpha'), prs: [pr] }, [])
+    expect(vm.prs[0]?.highlightStyle).toBe('')
+  })
+
+  test('highlightStyle contains rgba for a brand-new PR', () => {
+    const pr = basePr({ createdAt: new Date() })
+    const vm = toCardViewModel({ ...emptyCardData('alice/alpha'), prs: [pr] }, [])
+    expect(vm.prs[0]?.highlightStyle).toContain('rgba(34,197,94,')
+  })
+
+  test('opacity is lower for a 3-hour-old PR than a brand-new one', () => {
+    const newPr = basePr({ createdAt: new Date(), number: 1, prUrl: 'u1' })
+    const oldPr = basePr({
+      createdAt: new Date(Date.now() - 3 * 3_600_000),
+      number: 2,
+      prUrl: 'u2',
+    })
+    const vm = toCardViewModel({ ...emptyCardData('alice/alpha'), prs: [newPr, oldPr] }, [])
+    const extract = (style: string) =>
+      Number.parseFloat(style.match(/rgba\(34,197,94,([^)]+)\)/)?.[1] ?? '0')
+    expect(extract(vm.prs[0]?.highlightStyle ?? '')).toBeGreaterThan(
+      extract(vm.prs[1]?.highlightStyle ?? ''),
+    )
   })
 })
 

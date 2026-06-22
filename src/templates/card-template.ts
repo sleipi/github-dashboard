@@ -15,15 +15,15 @@ const MAX_PRS_ON_CARD = 5
 const MAX_ACTIVITIES_ON_CARD = 5
 const HIGHLIGHT_OPACITIES = [0.5, 0.42, 0.33, 0.25, 0.17, 0.08] as const
 
-function commitBorderStyle(lastCommitAt: Date | null): { borderColor: string; borderGlow: string } {
-  if (!lastCommitAt) return { borderColor: '#30363d', borderGlow: '' }
+function buildBorderStyle(lastCommitAt: Date | null): string {
+  if (!lastCommitAt) return 'border-color:#30363d'
   const ageMs = Date.now() - lastCommitAt.getTime()
   const HOUR = 3_600_000
   const DAY = 86_400_000
-  if (ageMs < HOUR) return { borderColor: '#2ea043', borderGlow: '0 0 0 1px #2ea043' }
-  if (ageMs < DAY) return { borderColor: '#1a6b32', borderGlow: '0 0 0 1px #1a6b3266' }
-  if (ageMs < 3 * DAY) return { borderColor: '#1a4228', borderGlow: '' }
-  return { borderColor: '#30363d', borderGlow: '' }
+  if (ageMs < HOUR) return 'border-color:#2ea043; box-shadow:0 0 0 1px #2ea043'
+  if (ageMs < DAY) return 'border-color:#1a6b32; box-shadow:0 0 0 1px #1a6b3266'
+  if (ageMs < 3 * DAY) return 'border-color:#1a4228'
+  return 'border-color:#30363d'
 }
 
 function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel {
@@ -46,7 +46,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
 
   const prRows: PrRowViewModel[] = displayPrs.map((pr) => {
     const ageHours = Math.floor((now.getTime() - pr.createdAt.getTime()) / 3_600_000)
-    const newHighlightHours = ageHours < 6 ? ageHours : null
+    const opacityIdx = ageHours < 6 ? ageHours : null
     return {
       number: pr.number,
       title: pr.title,
@@ -54,7 +54,8 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
       ciColor: ciColor(pr.ciStatus),
       ciLabel: ciLabel(pr.ciStatus),
       prUrl: pr.prUrl,
-      newHighlightHours,
+      highlightStyle:
+        opacityIdx !== null ? `background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[opacityIdx]})` : '',
     }
   })
 
@@ -86,6 +87,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     hasDepTrend: trendStr.length > 0,
     depCollecting: trendStr.length === 0,
     activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
+    hasActivities: displayActivities.length > 0,
     activityMore,
     hasActivityMore: activityMore > 0,
     prs: prRows,
@@ -95,7 +97,8 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     prMore,
     hasMore: prMore > 0,
     prMoreLabel: prMore === 1 ? '+ 1 more PR' : `+ ${prMore} more PRs`,
-    ...commitBorderStyle(cache.lastCommitAt),
+    loadingId: `ld-${fullName.replace(/[^a-z0-9]/gi, '-')}`,
+    borderStyle: buildBorderStyle(cache.lastCommitAt),
   }
 }
 
@@ -103,11 +106,10 @@ export function renderCard(vm: CardViewModel): string {
   const safeOwner = escapeHtml(vm.owner)
   const safeName = escapeHtml(vm.name)
   const safeFullName = escapeHtml(vm.fullName)
-  const loadingId = `ld-${vm.fullName.replace(/[^a-z0-9]/gi, '-')}`
   return `
 <div class="card" id="card-${safeOwner}-${safeName}" draggable="true" data-card-name="${safeFullName}"
-     style="position:relative;border-color: ${vm.borderColor}${vm.borderGlow ? `; box-shadow: ${vm.borderGlow}` : ''}">
-  <div id="${loadingId}" class="htmx-indicator"
+     style="position:relative;${vm.borderStyle}">
+  <div id="${vm.loadingId}" class="htmx-indicator"
        style="position:absolute;inset:0;background:rgba(22,27,34,0.88);z-index:10;
               padding:14px;border-radius:8px;display:flex;flex-direction:column;gap:10px;
               justify-content:center">
@@ -126,7 +128,7 @@ export function renderCard(vm: CardViewModel): string {
     ${vm.showCiDot ? `<div class="ci-dot" style="background:${vm.ciDotColor}" title="${vm.ciDotLabel}"></div>` : ''}
     <button hx-get="/api/card/${safeOwner}/${safeName}"
             hx-target="closest .card" hx-swap="outerHTML"
-            hx-indicator="#${loadingId}"
+            hx-indicator="#${vm.loadingId}"
             class="refresh-btn"
             style="background:transparent;border:none;padding:3px;color:#6e7681;cursor:pointer"
             title="Refresh">↻</button>
@@ -147,7 +149,7 @@ export function renderCard(vm: CardViewModel): string {
       </a>
     </div>
     ${
-      vm.activities.length > 0
+      vm.hasActivities
         ? `
     <div style="border-top:1px solid #21262d;padding-top:7px;margin-bottom:8px;display:flex;flex-direction:column;gap:2px">
       ${vm.activities
@@ -185,12 +187,9 @@ export function renderCard(vm: CardViewModel): string {
       <div style="display:flex;flex-direction:column;gap:1px">
         ${vm.prs
           .map((pr) => {
-            const bgStyle =
-              pr.newHighlightHours !== null
-                ? ` style="background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[pr.newHighlightHours]})"`
-                : ''
+            const bgAttr = pr.highlightStyle ? ` style="${pr.highlightStyle}"` : ''
             return `
-        <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer" class="pr-row"${bgStyle}>
+        <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer" class="pr-row"${bgAttr}>
           <div class="ci-dot" style="background:${pr.ciColor}" title="${pr.ciLabel}"></div>
           <span style="font-size:10px;color:#6e7681;font-family:monospace">#${pr.number}</span>
           <span style="font-size:12px;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escapeHtml(pr.title)}</span>

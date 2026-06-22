@@ -11,7 +11,7 @@ export type PrRowViewModel = {
   readonly ciColor: string
   readonly ciLabel: string
   readonly prUrl: string
-  readonly newHighlightHours: number | null // null = no highlight; 0–5 = hour band
+  readonly highlightStyle: string // "" or "background:rgba(34,197,94,0.42)"
 }
 
 export type CardViewModel = {
@@ -20,17 +20,18 @@ export type CardViewModel = {
   readonly name: string
   readonly repoUrl: string
   readonly securityUrl: string
-  readonly lastCommit: string // "vor 2 Std." oder "—"
+  readonly lastCommit: string
   readonly ciDotColor: string
   readonly ciDotLabel: string
   readonly showCiDot: boolean
-  readonly depDisplay: string // "0", "5", etc.
+  readonly depDisplay: string
   readonly depColor: string
   readonly depLabel: string
-  readonly depTrend: string // "(+2, -1)" oder ""
+  readonly depTrend: string
   readonly hasDepTrend: boolean
   readonly depCollecting: boolean
   readonly activities: readonly ActivityItemViewModel[]
+  readonly hasActivities: boolean
   readonly activityMore: number
   readonly hasActivityMore: boolean
   readonly prs: ReadonlyArray<PrRowViewModel>
@@ -40,8 +41,8 @@ export type CardViewModel = {
   readonly prMore: number
   readonly hasMore: boolean
   readonly prMoreLabel: string
-  readonly borderColor: string
-  readonly borderGlow: string
+  readonly loadingId: string
+  readonly borderStyle: string
 }
 
 export type RepoListItemViewModel = {
