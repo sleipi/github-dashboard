@@ -56,3 +56,34 @@ export type DependabotTrend = {
   readonly month: number | null
   readonly sixMonths: number | null
 }
+
+export type ActivityEventType =
+  | 'pr_merged'
+  | 'pr_abandoned'
+  | 'pr_review_approved'
+  | 'pr_review_changes_requested'
+  | 'release'
+  | 'push'
+  | 'security_alert'
+
+export type Activity = {
+  readonly id: number
+  readonly repoFullName: string
+  readonly eventType: ActivityEventType
+  readonly actor: string
+  readonly subject: string
+  readonly linkUrl: string
+  readonly occurredAt: Date
+  readonly recordedAt: Date
+  readonly githubEventId: string | null
+}
+
+export type ActivityMeta = {
+  readonly repoFullName: string
+  readonly eventsEtag: string | null
+  readonly eventsCachedAt: Date | null
+  readonly pollIntervalSecs: number
+  readonly dependabotCachedAt: Date | null
+}
+
+export type RefreshHint = 'prs' | 'commits' | 'ci'

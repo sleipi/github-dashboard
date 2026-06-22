@@ -41,6 +41,28 @@ const MIGRATIONS: Migration[] = [
       recorded_at     TEXT NOT NULL
     )`)
   },
+  // v2: activity tables
+  (db) => {
+    db.run(`CREATE TABLE activity (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      repo_full_name   TEXT NOT NULL,
+      event_type       TEXT NOT NULL,
+      actor            TEXT NOT NULL,
+      subject          TEXT NOT NULL,
+      link_url         TEXT NOT NULL,
+      occurred_at      TEXT NOT NULL,
+      recorded_at      TEXT NOT NULL,
+      github_event_id  TEXT,
+      UNIQUE (repo_full_name, github_event_id)
+    )`)
+    db.run(`CREATE TABLE activity_meta (
+      repo_full_name       TEXT PRIMARY KEY,
+      events_etag          TEXT,
+      events_cached_at     TEXT,
+      poll_interval_secs   INTEGER NOT NULL DEFAULT 60,
+      dependabot_cached_at TEXT
+    )`)
+  },
 ]
 
 export function runMigrations(db: Database): void {

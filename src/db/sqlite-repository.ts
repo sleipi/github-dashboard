@@ -1,4 +1,5 @@
 import { Database } from 'bun:sqlite'
+import { createSqliteActivityRepo } from './activity/sqlite-activity-repo.ts'
 import { createSqliteAuthRepo } from './auth/sqlite-auth-repo.ts'
 import { createSqliteCardRepo } from './cards/sqlite-card-repo.ts'
 import { createSqliteDependabotRepo } from './dependabot/sqlite-dependabot-repo.ts'
@@ -15,6 +16,7 @@ export function createSqliteRepos(dbPath: string): Repos {
     cards: createSqliteCardRepo(db),
     pullRequests: createSqlitePrRepo(db),
     dependabot: createSqliteDependabotRepo(db),
+    activity: createSqliteActivityRepo(db),
     close() {
       db.close()
     },

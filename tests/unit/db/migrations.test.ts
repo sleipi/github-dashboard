@@ -28,6 +28,8 @@ describe('runMigrations', () => {
     expect(tables).toContain('repo_cache')
     expect(tables).toContain('pull_requests')
     expect(tables).toContain('dependabot_history')
+    expect(tables).toContain('activity')
+    expect(tables).toContain('activity_meta')
 
     db.close()
   })
@@ -40,7 +42,7 @@ describe('runMigrations', () => {
     runMigrations(db)
 
     const row = db.query<{ user_version: number }, []>('PRAGMA user_version').get()
-    expect(row?.user_version).toBe(1)
+    expect(row?.user_version).toBe(2)
     db.close()
   })
 
