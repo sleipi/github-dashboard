@@ -83,14 +83,14 @@ export function createGitHubClient(
 
   async function gfetch(path: string): Promise<unknown> {
     const res = await fetchFn(`https://api.github.com${path}`, { headers: authHeaders() })
-    if (res.status === 401) throw new Error('Token ungültig (401)')
+    if (res.status === 401) throw new Error('Invalid token (401)')
     if (res.status === 403) {
       const j = (await res.json().catch(() => ({}))) as { message?: string }
-      throw new Error(j.message ?? 'Zugriff verweigert (403)')
+      throw new Error(j.message ?? 'Access denied (403)')
     }
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { message?: string }
-      throw new Error(j.message ?? `API-Fehler ${res.status}`)
+      throw new Error(j.message ?? `API error ${res.status}`)
     }
     return res.json()
   }
@@ -105,14 +105,14 @@ export function createGitHubClient(
           Accept: 'application/vnd.github.v3+json',
         },
       })
-      if (res.status === 401) throw new Error('Token ungültig (401)')
+      if (res.status === 401) throw new Error('Invalid token (401)')
       if (res.status === 403) {
         const j = (await res.json().catch(() => ({}))) as { message?: string }
-        throw new Error(j.message ?? 'Zugriff verweigert (403)')
+        throw new Error(j.message ?? 'Access denied (403)')
       }
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { message?: string }
-        throw new Error(j.message ?? `API-Fehler ${res.status}`)
+        throw new Error(j.message ?? `API error ${res.status}`)
       }
       const d = (await res.json()) as { login: string; avatar_url: string }
       const expiryHeader = res.headers.get('GitHub-Authentication-Token-Expiration')
@@ -216,7 +216,7 @@ export function createGitHubClient(
       if (res.status === 304) return { notModified: true }
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { message?: string }
-        throw new Error(j.message ?? `API-Fehler ${res.status}`)
+        throw new Error(j.message ?? `API error ${res.status}`)
       }
       const raw = (await res.json()) as Array<{
         id: string

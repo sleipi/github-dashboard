@@ -37,7 +37,7 @@ function renderRepoRow(vm: RepoListItemViewModel): string {
   <div style="flex:1;min-width:0">
     <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
       <span style="color:#6e7681">${safeOwner}/</span><span style="font-weight:500">${safeName}</span>
-      ${vm.isPrivate ? '<span class="badge" style="margin-left:6px">Privat</span>' : ''}
+      ${vm.isPrivate ? '<span class="badge" style="margin-left:6px">Private</span>' : ''}
     </div>
     <div style="font-size:11px;color:#6e7681;margin-top:2px">
       ${vm.updatedAt}${vm.language ? ` · ${escapeHtml(vm.language)}` : ''}
@@ -53,12 +53,12 @@ export function renderRepoModal(repos: GitHubRepo[], pinned: Set<string>): strin
 <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
   <div class="modal" onclick="event.stopPropagation()">
     <div style="padding:15px 20px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:10px">
-      <span style="font-size:15px;font-weight:600;flex:1">Repos verwalten</span>
+      <span style="font-size:15px;font-weight:600;flex:1">Manage repos</span>
       <button onclick="document.getElementById('modal').innerHTML=''"
               style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:20px">×</button>
     </div>
     <div style="padding:10px 14px;border-bottom:1px solid #21262d">
-      <input id="repo-search" type="text" placeholder="Repo suchen…"
+      <input id="repo-search" type="text" placeholder="Search repos…"
              style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
                     padding:7px 11px;color:#e6edf3;font-size:13px;outline:none"/>
     </div>

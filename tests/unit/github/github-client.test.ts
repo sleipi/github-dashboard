@@ -554,7 +554,7 @@ describe('GitHubClient', () => {
     const fetchFn = mock(async () => new Response('', { status: 401 }))
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    await expect(client.getUser()).rejects.toThrow('Token ungültig (401)')
+    await expect(client.getUser()).rejects.toThrow('Invalid token (401)')
 
     repos.close()
     cleanupTempDir(dir)
@@ -594,7 +594,7 @@ describe('GitHubClient', () => {
     )
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    await expect(client.getUser()).rejects.toThrow('Zugriff verweigert (403)')
+    await expect(client.getUser()).rejects.toThrow('Access denied (403)')
 
     repos.close()
     cleanupTempDir(dir)
@@ -628,7 +628,7 @@ describe('GitHubClient', () => {
     const fetchFn = mock(async () => new Response('', { status: 500 }))
     const client = createGitHubClient(repos.auth, fetchFn)
 
-    await expect(client.getUser()).rejects.toThrow('API-Fehler 500')
+    await expect(client.getUser()).rejects.toThrow('API error 500')
 
     repos.close()
     cleanupTempDir(dir)

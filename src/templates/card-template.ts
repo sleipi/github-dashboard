@@ -76,7 +76,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     showCiDot: overallCi !== null,
     depDisplay: String(dep),
     depColor: depColor(dep),
-    depLabel: dep === 0 ? 'Keine Dependabot-Alerts' : `${dep} Alert${dep === 1 ? '' : 's'}`,
+    depLabel: dep === 0 ? 'No Dependabot alerts' : `${dep} Alert${dep === 1 ? '' : 's'}`,
     depTrend: trendStr,
     hasDepTrend: trendStr.length > 0,
     depCollecting: trendStr.length === 0,
@@ -89,7 +89,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     prTotal: cache.prTotal,
     prMore,
     hasMore: prMore > 0,
-    prMoreLabel: prMore === 1 ? '+ 1 weiterer PR' : `+ ${prMore} weitere PRs`,
+    prMoreLabel: prMore === 1 ? '+ 1 more PR' : `+ ${prMore} more PRs`,
     ...commitBorderStyle(cache.lastCommitAt),
   }
 }
@@ -124,11 +124,11 @@ export function renderCard(vm: CardViewModel): string {
             hx-indicator="#${loadingId}"
             class="refresh-btn"
             style="background:transparent;border:none;padding:3px;color:#6e7681;cursor:pointer"
-            title="Neu laden">↻</button>
+            title="Refresh">↻</button>
     <button hx-post="/api/cards/${safeOwner}/${safeName}"
             hx-swap="none" hx-on::after-request="htmx.trigger(document.body,'cardsChanged')"
             style="background:transparent;border:none;padding:3px 5px;color:#6e7681;cursor:pointer"
-            title="Entfernen">×</button>
+            title="Remove">×</button>
   </div>
   <div class="card-body">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:11px">
@@ -138,7 +138,7 @@ export function renderCard(vm: CardViewModel): string {
          title="${vm.depLabel}">
         🛡 ${vm.depDisplay}
         ${vm.hasDepTrend ? `<span style="font-size:10px;color:#6e7681">${vm.depTrend}</span>` : ''}
-        ${vm.depCollecting ? `<span style="font-size:10px;color:#484f58" title="Verlauf wird aufgebaut">···</span>` : ''}
+        ${vm.depCollecting ? `<span style="font-size:10px;color:#484f58" title="Building history…">···</span>` : ''}
       </a>
     </div>
     ${
@@ -208,7 +208,7 @@ export function renderCard(vm: CardViewModel): string {
       }
       `
           : `
-      <div style="font-size:12px;color:#8b949e;padding:5px">✓ Keine offenen PRs</div>`
+      <div style="font-size:12px;color:#8b949e;padding:5px">✓ No open PRs</div>`
       }
     </div>
   </div>
@@ -237,8 +237,8 @@ export function renderCardError(fullName: string, message: string): string {
 export function renderCards(vms: CardViewModel[]): string {
   if (vms.length === 0) {
     return `<div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;text-align:center;color:#8b949e">
-      <h2 style="color:#e6edf3;margin:0 0 8px">Noch keine Repos gepinnt</h2>
-      <p style="margin:0 0 24px">Klicke auf "Repo hinzufügen" um loszulegen.</p>
+      <h2 style="color:#e6edf3;margin:0 0 8px">No repos pinned yet</h2>
+      <p style="margin:0 0 24px">Click "+ Add repo" to get started.</p>
     </div>`
   }
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">

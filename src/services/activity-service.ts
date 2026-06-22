@@ -22,7 +22,7 @@ export function createActivityService(repos: Repos, client: GitHubClient): Activ
       const meta = repos.activity.getMeta(fullName)
       const hints = new Set<RefreshHint>()
 
-      // Hard TTL fallback: never synced or synced > 10 min ago → force full refresh
+      // Hard TTL fallback: never synced or synced > 3 min ago → force full refresh
       const lastSync = meta?.eventsCachedAt?.getTime() ?? 0
       const isFirstLoad = !meta?.eventsCachedAt
       if (isFirstLoad || now - lastSync > HARD_TTL_MS) {

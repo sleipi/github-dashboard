@@ -126,7 +126,7 @@ describe('renderCard', () => {
     }
     const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('🛡')
-    expect(html).toContain('Keine Dependabot-Alerts')
+    expect(html).toContain('No Dependabot alerts')
   })
 
   test('zeigt weitere-PRs-Button wenn mehr als MAX_PRS_ON_CARD vorhanden', () => {
@@ -145,7 +145,7 @@ describe('renderCard', () => {
     const data: CardData = { ...emptyCardData('alice/busy'), prs }
     const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('hx-get="/api/prs/alice/busy"')
-    expect(html).toContain('weiterer PR')
+    expect(html).toContain('more PR')
   })
 })
 
@@ -158,7 +158,7 @@ describe('DASHBOARD_CSS', () => {
 
 describe('renderCards', () => {
   test('shows empty state when no cards', () => {
-    expect(renderCards([])).toContain('Noch keine Repos gepinnt')
+    expect(renderCards([])).toContain('No repos pinned yet')
   })
 
   test('renders card html for each viewmodel', () => {

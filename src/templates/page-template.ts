@@ -104,7 +104,7 @@ const FAVICON_B64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
 
 export function renderSetupPage(error?: string): string {
-  return `<!DOCTYPE html><html lang="de"><head>
+  return `<!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GitHub Dashboard — Setup</title>
@@ -131,19 +131,19 @@ export function renderSetupPage(error?: string): string {
                       outline:none;margin-bottom:12px"/>
         ${error ? `<div style="color:#f85149;font-size:13px;margin-bottom:12px">${escapeHtml(error)}</div>` : ''}
         <div style="font-size:12px;color:#8b949e;margin-bottom:16px">
-          Benötigte Scopes: <code>repo</code> · <code>security_events</code>
+          Required scopes: <code>repo</code> · <code>security_events</code>
         </div>
         <button id="connect-btn" type="submit" class="btn-primary" style="width:100%;padding:10px">
-          Mit GitHub verbinden
+          Connect to GitHub
         </button>
         <div style="font-size:11px;color:#6e7681;text-align:center;margin-top:12px">
-          🔒 Dein Token wird nur lokal auf diesem Gerät gespeichert.
+          🔒 Your token is stored locally on this device only.
         </div>
       </form>
       <script>
         document.getElementById('setup-form').addEventListener('submit', function() {
           const btn = document.getElementById('connect-btn');
-          if (btn) { btn.disabled = true; btn.textContent = 'Verbinde…'; }
+          if (btn) { btn.disabled = true; btn.textContent = 'Connecting…'; }
         });
       </script>
     </div>
@@ -158,7 +158,7 @@ export function renderDashboard(
   expiresAt: Date | null = null,
   severity: PatExpirySeverity | null = null,
 ): string {
-  return `<!DOCTYPE html><html lang="de"><head>
+  return `<!DOCTYPE html><html lang="en"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
@@ -179,11 +179,11 @@ export function renderDashboard(
     <button class="btn-ghost"
             hx-get="/api/cards" hx-target="#cards" hx-swap="morph:innerHTML"
             hx-on::after-request="htmx.trigger(document.body,'cardsChanged')">
-      Aktualisieren
+      Refresh
     </button>
     <button class="btn-primary repo-add-btn"
             hx-get="/api/modal/repos" hx-target="#modal" hx-swap="innerHTML">
-      + Repo hinzufügen
+      + Add repo
     </button>
     ${avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(username)}" width="24" height="24" style="border-radius:50%;flex-shrink:0">` : ''}
     <span style="font-size:13px;color:#8b949e">${escapeHtml(username)}</span>
@@ -191,7 +191,7 @@ export function renderDashboard(
       <input type="hidden" name="_method" value="DELETE">
       <button type="submit"
               style="background:transparent;border:none;color:#6e7681;cursor:pointer;font-size:12px">
-        Abmelden
+        Sign out
       </button>
     </form>
     ${
