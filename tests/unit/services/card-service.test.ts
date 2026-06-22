@@ -265,6 +265,27 @@ describe('CardService', () => {
     cleanupTempDir(dir)
   })
 
+  test('getCard skips CI refresh when refreshNeeded has ci but not prs', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getCiStatus = mock(async () => 'success' as const)
+    const getPrs = mock(async () => [])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+    const service = createCardService(repos, makeClient({ getCiStatus, getPrs }))
+
+    await service.getCard('alice/alpha', new Set(['ci']))
+
+    expect(getPrs).not.toHaveBeenCalled()
+    expect(getCiStatus).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('getPinned returns full names of pinned repos in order', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)

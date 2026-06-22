@@ -58,7 +58,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     }
   })
 
-  const dep = cache.dependabotCount
+  const dep = cache.dependabotCount ?? 0
   const trendStr = formatTrend(trend)
 
   const displayActivities = activities.slice(0, MAX_ACTIVITIES_ON_CARD)
@@ -74,17 +74,12 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     ciDotColor: overallCi ? ciColor(overallCi) : 'transparent',
     ciDotLabel: overallCi ? ciLabel(overallCi) : '',
     showCiDot: overallCi !== null,
-    depDisplay: dep !== null ? String(dep) : '—',
+    depDisplay: String(dep),
     depColor: depColor(dep),
-    depLabel:
-      dep === null
-        ? 'Dependabot: kein Zugriff'
-        : dep === 0
-          ? 'Keine Dependabot-Alerts'
-          : `${dep} Alert${dep === 1 ? '' : 's'}`,
+    depLabel: dep === 0 ? 'Keine Dependabot-Alerts' : `${dep} Alert${dep === 1 ? '' : 's'}`,
     depTrend: trendStr,
     hasDepTrend: trendStr.length > 0,
-    depCollecting: dep !== null && trendStr.length === 0,
+    depCollecting: trendStr.length === 0,
     activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
     activityMore,
     hasActivityMore: activityMore > 0,
@@ -138,18 +133,13 @@ export function renderCard(vm: CardViewModel): string {
   <div class="card-body">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:11px">
       <span style="color:#8b949e">⏱ ${vm.lastCommit}</span>
-      ${
-        vm.depDisplay !== '—'
-          ? `
       <a href="${vm.securityUrl}" target="_blank" rel="noopener noreferrer"
          style="color:${vm.depColor};display:flex;align-items:center;gap:4px;text-decoration:none"
          title="${vm.depLabel}">
         🛡 ${vm.depDisplay}
         ${vm.hasDepTrend ? `<span style="font-size:10px;color:#6e7681">${vm.depTrend}</span>` : ''}
         ${vm.depCollecting ? `<span style="font-size:10px;color:#484f58" title="Verlauf wird aufgebaut">···</span>` : ''}
-      </a>`
-          : `<span style="color:#484f58;display:flex;align-items:center;gap:4px" title="${vm.depLabel}">🛡 —</span>`
-      }
+      </a>
     </div>
     ${
       vm.activities.length > 0

@@ -118,14 +118,14 @@ describe('renderCard', () => {
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
 
-  test('zeigt Security-Badge als "—" mit Tooltip wenn Dependabot-Zugriff verweigert (null)', () => {
+  test('zeigt Security-Badge mit "0" und grünem Tooltip wenn dependabotCount null ist (treated as 0)', () => {
     const data: CardData = {
       ...emptyCardData('alice/no-dep'),
       cache: { ...emptyCardData('alice/no-dep').cache, dependabotCount: null },
     }
     const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('🛡')
-    expect(html).toContain('Dependabot: kein Zugriff')
+    expect(html).toContain('Keine Dependabot-Alerts')
   })
 
   test('zeigt weitere-PRs-Button wenn mehr als MAX_PRS_ON_CARD vorhanden', () => {

@@ -50,8 +50,7 @@ export function aggregateCiStatus(statuses: CiStatus[]): CiStatus | null {
   return 'unknown'
 }
 
-export function depColor(count: number | null): string {
-  if (count === null) return '#6e7681'
+export function depColor(count: number): string {
   if (count === 0) return '#3fb950'
   if (count > 5) return '#f85149'
   return '#d29922'

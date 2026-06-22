@@ -55,8 +55,8 @@ describe('depColor', () => {
   test('red for > 5 alerts', () => {
     expect(depColor(6)).toBe('#f85149')
   })
-  test('gray for null', () => {
-    expect(depColor(null)).toBe('#6e7681')
+  test('yellow for 1–5 alerts', () => {
+    expect(depColor(3)).toBe('#d29922')
   })
 })
 

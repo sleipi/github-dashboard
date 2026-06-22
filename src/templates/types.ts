@@ -24,7 +24,7 @@ export type CardViewModel = {
   readonly ciDotColor: string
   readonly ciDotLabel: string
   readonly showCiDot: boolean
-  readonly depDisplay: string // "5" oder "—"
+  readonly depDisplay: string // "0", "5", etc.
   readonly depColor: string
   readonly depLabel: string
   readonly depTrend: string // "(+2, -1)" oder ""
