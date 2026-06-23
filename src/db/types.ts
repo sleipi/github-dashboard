@@ -60,6 +60,7 @@ export type DependabotTrend = {
 export type ActivityEventType =
   | 'pr_merged'
   | 'pr_abandoned'
+  | 'pr_opened'
   | 'pr_review_approved'
   | 'pr_review_changes_requested'
   | 'release'

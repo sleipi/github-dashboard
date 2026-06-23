@@ -92,23 +92,36 @@ function mapEvents(
         action: string
         pull_request: { number: number; title: string; merged: boolean; html_url: string }
       }
-      if (p.action !== 'closed') continue
-      hints.add('prs')
       const pr = p.pull_request
-      const eventType: ActivityEventType = pr.merged ? 'pr_merged' : 'pr_abandoned'
-      const subject = pr.merged
-        ? `merged #${pr.number} — ${pr.title}`
-        : `closed #${pr.number} without merging`
-      activities.push({
-        repoFullName: fullName,
-        eventType,
-        actor,
-        subject,
-        linkUrl: pr.html_url,
-        occurredAt,
-        recordedAt: now,
-        githubEventId: event.id,
-      })
+      if (p.action === 'opened') {
+        hints.add('prs')
+        activities.push({
+          repoFullName: fullName,
+          eventType: 'pr_opened',
+          actor,
+          subject: `opened #${pr.number} — ${pr.title}`,
+          linkUrl: pr.html_url,
+          occurredAt,
+          recordedAt: now,
+          githubEventId: event.id,
+        })
+      } else if (p.action === 'closed') {
+        hints.add('prs')
+        const eventType: ActivityEventType = pr.merged ? 'pr_merged' : 'pr_abandoned'
+        const subject = pr.merged
+          ? `merged #${pr.number} — ${pr.title}`
+          : `closed #${pr.number} without merging`
+        activities.push({
+          repoFullName: fullName,
+          eventType,
+          actor,
+          subject,
+          linkUrl: pr.html_url,
+          occurredAt,
+          recordedAt: now,
+          githubEventId: event.id,
+        })
+      }
     } else if (event.type === 'PullRequestReviewEvent') {
       const p = event.payload as {
         action: string

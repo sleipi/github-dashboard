@@ -230,6 +230,51 @@ describe('ActivityService', () => {
     cleanupTempDir(dir)
   })
 
+  test('sync maps PullRequestEvent (opened) to pr_opened activity and adds prs hint', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsCachedAt: new Date(Date.now() - 120_000),
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(),
+    })
+    const getRepoEvents = mock(async () => ({
+      events: [
+        {
+          id: 'evt_010',
+          type: 'PullRequestEvent',
+          actor: { login: 'carol' },
+          payload: {
+            action: 'opened',
+            pull_request: {
+              number: 55,
+              title: 'feat: new feature',
+              merged: false,
+              html_url: 'https://github.com/alice/alpha/pull/55',
+            },
+          },
+          repo: { name: 'alice/alpha' },
+          createdAt: '2026-06-23T10:00:00Z',
+        },
+      ],
+      etag: '"e10"',
+      pollIntervalSecs: 60,
+    }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('prs')).toBe(true)
+    expect(result.activities).toHaveLength(1)
+    expect(result.activities[0]?.eventType).toBe('pr_opened')
+    expect(result.activities[0]?.actor).toBe('@carol')
+    expect(result.activities[0]?.subject).toBe('opened #55 — feat: new feature')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('sync emits commits+ci hints for PushEvent on main but records no activity', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
     cleanup.push(dir)
