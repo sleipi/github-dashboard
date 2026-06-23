@@ -31,12 +31,20 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const now = new Date()
     const existing = repos.pullRequests.getCache(fullName)
 
-    const [githubPrs, lastCommitAt] = await Promise.all([
-      refreshNeeded.has('prs') ? client.getPrs(fullName) : Promise.resolve(null),
-      refreshNeeded.has('commits')
-        ? client.getLastCommitDate(fullName)
-        : Promise.resolve(undefined),
-    ])
+    let githubPrs: Awaited<ReturnType<typeof client.getPrs>> | null = null
+    let lastCommitAt: Date | null | undefined = undefined
+    try {
+      ;[githubPrs, lastCommitAt] = await Promise.all([
+        refreshNeeded.has('prs') ? client.getPrs(fullName) : Promise.resolve(null),
+        refreshNeeded.has('commits')
+          ? client.getLastCommitDate(fullName)
+          : Promise.resolve(undefined),
+      ])
+    } catch (err) {
+      // GitHub API unreachable — serve existing cache if available, else propagate
+      if (!existing) throw err
+      return
+    }
 
     if (githubPrs !== null && refreshNeeded.has('prs')) {
       // Fetched new PRs — also refresh CI for top MAX_CI_CHECKS

@@ -287,6 +287,59 @@ describe('CardService', () => {
     cleanupTempDir(dir)
   })
 
+  test('getCard falls back to cached PRs when GitHub API throws and cache exists', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    // Seed a cached PR
+    repos.pullRequests.upsertPrs('alice/alpha', [
+      {
+        repoFullName: 'alice/alpha',
+        number: 1,
+        title: 'cached pr',
+        draft: false,
+        ciStatus: 'success',
+        prUrl: 'https://github.com/alice/alpha/pull/1',
+        creator: 'alice',
+        labels: [],
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      },
+    ])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 1,
+      dependabotCount: 0,
+    })
+    const getPrs = mock(async () => {
+      throw new Error('GitHub API unavailable')
+    })
+    const service = createCardService(repos, makeClient({ getPrs }))
+
+    const result = await service.getCard('alice/alpha', new Set(['prs']))
+
+    expect(result.prs).toHaveLength(1)
+    expect(result.prs[0]?.title).toBe('cached pr')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard propagates GitHub API error when no cache exists', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPrs = mock(async () => {
+      throw new Error('GitHub API unavailable')
+    })
+    const service = createCardService(repos, makeClient({ getPrs }))
+
+    await expect(service.getCard('alice/alpha', new Set(['prs']))).rejects.toThrow(
+      'GitHub API unavailable',
+    )
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('getPinned returns full names of pinned repos in order', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)
