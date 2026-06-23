@@ -158,6 +158,61 @@ describe('ActivityRepo', () => {
     repos.close()
   })
 
+  test('countNewSince returns 0 when no activities exist', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    expect(repos.activity.countNewSince(new Date(0))).toBe(0)
+
+    repos.close()
+  })
+
+  test('countNewSince counts rows recorded after the given timestamp', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    const cutoff = new Date('2026-06-23T10:00:00Z')
+
+    repos.activity.upsertActivities('alice/alpha', [
+      makeActivity({
+        recordedAt: new Date('2026-06-23T09:59:00Z'),
+        githubEventId: 'before',
+      }),
+      makeActivity({
+        recordedAt: new Date('2026-06-23T10:01:00Z'),
+        githubEventId: 'after1',
+      }),
+      makeActivity({
+        repoFullName: 'alice/beta',
+        recordedAt: new Date('2026-06-23T10:02:00Z'),
+        githubEventId: 'after2',
+      }),
+    ])
+
+    expect(repos.activity.countNewSince(cutoff)).toBe(2)
+
+    repos.close()
+  })
+
+  test('countNewSince does not count rows recorded exactly at the cutoff', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    const cutoff = new Date('2026-06-23T10:00:00Z')
+
+    repos.activity.upsertActivities('alice/alpha', [
+      makeActivity({
+        recordedAt: cutoff,
+        githubEventId: 'exact',
+      }),
+    ])
+
+    expect(repos.activity.countNewSince(cutoff)).toBe(0)
+
+    repos.close()
+  })
+
   test('getActivities returns rows DESC by occurred_at', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-')
     cleanup.push(dir)

@@ -98,6 +98,15 @@ export function createSqliteActivityRepo(db: Database): ActivityRepo {
       return row?.count ?? 0
     },
 
+    countNewSince(since) {
+      const row = db
+        .query<{ count: number }, [string]>(
+          'SELECT COUNT(*) as count FROM activity WHERE recorded_at > ?',
+        )
+        .get(since.toISOString())
+      return row?.count ?? 0
+    },
+
     getMeta(fullName) {
       const row = db
         .query<MetaRow, [string]>('SELECT * FROM activity_meta WHERE repo_full_name = ?')

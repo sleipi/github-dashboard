@@ -5,6 +5,7 @@ export interface ActivityRepo {
   upsertActivities(fullName: string, activities: ReadonlyArray<Omit<Activity, 'id'>>): void
   replaceSecurityAlerts(fullName: string, alerts: ReadonlyArray<Omit<Activity, 'id'>>): void
   getDependabotCount(fullName: string): number
+  countNewSince(since: Date): number
   getMeta(fullName: string): ActivityMeta | null
   upsertMeta(fullName: string, meta: Partial<Omit<ActivityMeta, 'repoFullName'>>): void
 }
