@@ -327,6 +327,32 @@ describe('card routes', () => {
     cleanupTempDir(dir)
   })
 
+  test('GET /api/cards omits HX-Trigger when X-Last-Seen-Event-At header is absent', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    const activityService = makeActivityService({
+      countNewSince: mock(() => 0),
+    })
+    const routes = createCardRoutes(
+      makeCardService(repos),
+      activityService,
+      repos.auth,
+      makeClient(),
+    )
+
+    const url = new URL('http://localhost:4242/api/cards')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+
+    const res = await route.handle(new Request(url.href), url)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('HX-Trigger')).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('GET /api/card/owner/repo always calls getPrs regardless of empty refreshNeeded', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
     const repos = createSqliteRepos(dbPath)
