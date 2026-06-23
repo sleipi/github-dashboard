@@ -56,6 +56,7 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
           eventsCachedAt: new Date(),
           pollIntervalSecs: 60,
           dependabotCachedAt: new Date(),
+          prsCachedAt: new Date(),
         })
       }
       return redirect('/')

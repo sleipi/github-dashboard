@@ -175,7 +175,7 @@ test.describe('Dashboard', () => {
     await page.goto('/')
     // 3 current alerts — search by title attribute since '3' also appears in PR numbers
     await expect(
-      page.locator('[data-card-name="alice/awesome-project"] [title="3 Alerts"]'),
+      page.locator('[data-card-name="alice/awesome-project"] [title="3 open Dependabot alerts"]'),
     ).toBeVisible()
   })
 
