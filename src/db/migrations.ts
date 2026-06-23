@@ -63,6 +63,10 @@ const MIGRATIONS: Migration[] = [
       dependabot_cached_at TEXT
     )`)
   },
+  // v3: track when PRs were last fetched independently of events polling
+  (db) => {
+    db.run('ALTER TABLE activity_meta ADD COLUMN prs_cached_at TEXT')
+  },
 ]
 
 export function runMigrations(db: Database): void {

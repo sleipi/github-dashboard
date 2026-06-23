@@ -51,12 +51,13 @@ describe('ActivityService', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
     cleanup.push(dir)
     const repos = createSqliteRepos(dbPath)
-    // Seed fresh meta
+    // Seed fresh meta — prsCachedAt also fresh so PR TTL does not fire
     repos.activity.upsertMeta('alice/alpha', {
       eventsEtag: '"e1"',
       eventsCachedAt: new Date(), // just now
       pollIntervalSecs: 60,
       dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(),
     })
     const getRepoEvents = mock(async () => ({ notModified: true as const }))
     const service = createActivityService(repos, makeClient({ getRepoEvents }))
@@ -80,6 +81,7 @@ describe('ActivityService', () => {
       eventsCachedAt: new Date(Date.now() - 120_000),
       pollIntervalSecs: 60,
       dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(), // fresh — PR TTL does not fire
     })
     const getRepoEvents = mock(async () => ({ notModified: true as const }))
     const service = createActivityService(repos, makeClient({ getRepoEvents }))
@@ -88,6 +90,53 @@ describe('ActivityService', () => {
 
     expect(result.refreshNeeded.size).toBe(0)
     expect(getRepoEvents).toHaveBeenCalledWith('alice/alpha', '"e1"')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('sync adds prs+commits+ci hints when prsCachedAt is stale (> 5 min)', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsEtag: '"e1"',
+      eventsCachedAt: new Date(), // events fresh — only PR TTL drives hints
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(Date.now() - 6 * 60_000), // 6 min ago — stale
+    })
+    const getRepoEvents = mock(async () => ({ notModified: true as const }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('prs')).toBe(true)
+    expect(result.refreshNeeded.has('commits')).toBe(true)
+    expect(result.refreshNeeded.has('ci')).toBe(true)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('sync does NOT add prs hint from TTL when prsCachedAt is fresh (< 5 min)', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsEtag: '"e1"',
+      eventsCachedAt: new Date(),
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(Date.now() - 60_000), // 1 min ago — still fresh
+    })
+    const getRepoEvents = mock(async () => ({ notModified: true as const }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('prs')).toBe(false)
+    expect(result.refreshNeeded.has('commits')).toBe(false)
 
     repos.close()
     cleanupTempDir(dir)
@@ -225,6 +274,7 @@ describe('ActivityService', () => {
       eventsCachedAt: new Date(Date.now() - 120_000),
       pollIntervalSecs: 60,
       dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(), // fresh — ensures commits hint only comes from events
     })
     const getRepoEvents = mock(async () => ({
       events: [

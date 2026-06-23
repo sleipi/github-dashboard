@@ -4,7 +4,7 @@ import type { Activity, ActivityEventType, RefreshHint } from '../db/types.ts'
 import type { GitHubClient } from '../github/github-client.ts'
 
 const DEP_TTL_MS = 5 * 60_000 // 5 minutes
-const HARD_TTL_MS = 3 * 60_000 // 3 minutes — force full refresh if events unseen
+const PR_TTL_MS = 5 * 60_000 // 5 minutes — force PR+commit+CI refresh
 
 export type SyncResult = {
   readonly activities: readonly Activity[]
@@ -22,10 +22,11 @@ export function createActivityService(repos: Repos, client: GitHubClient): Activ
       const meta = repos.activity.getMeta(fullName)
       const hints = new Set<RefreshHint>()
 
-      // Hard TTL fallback: never synced or synced > 3 min ago → force full refresh
-      const lastSync = meta?.eventsCachedAt?.getTime() ?? 0
-      const isFirstLoad = !meta?.eventsCachedAt
-      if (isFirstLoad || now - lastSync > HARD_TTL_MS) {
+      // PR TTL: never fetched or last fetch > 5 min ago → force full refresh
+      // Uses prsCachedAt (stamped by card-service after each GitHub PR fetch),
+      // NOT eventsCachedAt which resets on every event poll and never accumulates.
+      const lastPrsSync = meta?.prsCachedAt?.getTime() ?? 0
+      if (!meta?.prsCachedAt || now - lastPrsSync > PR_TTL_MS) {
         hints.add('prs')
         hints.add('commits')
         hints.add('ci')

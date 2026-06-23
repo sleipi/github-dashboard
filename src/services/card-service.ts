@@ -67,6 +67,7 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
         updatedAt: new Date(pr.updatedAt),
       }))
       repos.pullRequests.upsertPrs(fullName, [...prsWithCi, ...prsRest])
+      repos.activity.upsertMeta(fullName, { prsCachedAt: now })
     } else if (refreshNeeded.has('ci') && !refreshNeeded.has('prs')) {
       // CI-only skip: no fresh PR SHAs available, leave stored CI status as-is
     }

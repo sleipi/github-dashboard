@@ -22,6 +22,7 @@ type MetaRow = {
   events_cached_at: string | null
   poll_interval_secs: number
   dependabot_cached_at: string | null
+  prs_cached_at: string | null
 }
 
 export function createSqliteActivityRepo(db: Database): ActivityRepo {
@@ -108,6 +109,7 @@ export function createSqliteActivityRepo(db: Database): ActivityRepo {
         eventsCachedAt: row.events_cached_at ? new Date(row.events_cached_at) : null,
         pollIntervalSecs: row.poll_interval_secs,
         dependabotCachedAt: row.dependabot_cached_at ? new Date(row.dependabot_cached_at) : null,
+        prsCachedAt: row.prs_cached_at ? new Date(row.prs_cached_at) : null,
       }
     },
 
@@ -121,11 +123,12 @@ export function createSqliteActivityRepo(db: Database): ActivityRepo {
         events_cached_at: null,
         poll_interval_secs: 60,
         dependabot_cached_at: null,
+        prs_cached_at: null,
       }
       db.run(
         `INSERT OR REPLACE INTO activity_meta
-         (repo_full_name, events_etag, events_cached_at, poll_interval_secs, dependabot_cached_at)
-         VALUES (?, ?, ?, ?, ?)`,
+         (repo_full_name, events_etag, events_cached_at, poll_interval_secs, dependabot_cached_at, prs_cached_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           fullName,
           meta.eventsEtag !== undefined ? meta.eventsEtag : base.events_etag,
@@ -136,6 +139,9 @@ export function createSqliteActivityRepo(db: Database): ActivityRepo {
           meta.dependabotCachedAt !== undefined
             ? (meta.dependabotCachedAt?.toISOString() ?? null)
             : base.dependabot_cached_at,
+          meta.prsCachedAt !== undefined
+            ? (meta.prsCachedAt?.toISOString() ?? null)
+            : base.prs_cached_at,
         ],
       )
     },

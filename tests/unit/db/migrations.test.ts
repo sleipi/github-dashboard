@@ -42,7 +42,7 @@ describe('runMigrations', () => {
     runMigrations(db)
 
     const row = db.query<{ user_version: number }, []>('PRAGMA user_version').get()
-    expect(row?.user_version).toBe(2)
+    expect(row?.user_version).toBe(3)
     db.close()
   })
 
