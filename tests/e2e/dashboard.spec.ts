@@ -541,6 +541,46 @@ test.describe('Dashboard', () => {
 
   // --- Empty state ---
 
+  test('browser tab shows count in title when new events arrive after watermark', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForSelector('[data-card-name]')
+
+    // Reset watermark to epoch so all seeded activities appear "new"
+    await page.evaluate(() => {
+      ;(window as unknown as { _lastSeenAt: number })._lastSeenAt = 0
+    })
+
+    // Click Refresh to trigger an /api/cards poll with X-Last-Seen-Event-At: 0
+    await page.click('button:has-text("Refresh")')
+    await page.waitForFunction(() => document.title.includes('('))
+
+    const title = await page.title()
+    expect(title).toMatch(/^\(\d+\) GitHub Dashboard$/)
+  })
+
+  test('browser tab title clears badge on tab focus simulation', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('[data-card-name]')
+
+    // Set badge state
+    await page.evaluate(() => {
+      ;(window as unknown as { _lastSeenAt: number })._lastSeenAt = 0
+    })
+    await page.click('button:has-text("Refresh")')
+    await page.waitForFunction(() => document.title.includes('('))
+
+    // Simulate tab becoming visible (visibilitychange fires on page.bringToFront)
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    const title = await page.title()
+    expect(title).toBe('GitHub Dashboard')
+  })
+
   test('shows empty state when all repos are removed', async ({ page }) => {
     await page.goto('/')
 

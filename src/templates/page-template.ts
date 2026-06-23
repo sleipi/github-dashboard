@@ -3,6 +3,9 @@ import { escapeHtml } from './formatters.ts'
 import { DASHBOARD_CSS } from './styles.ts'
 import type { DashboardViewModel, ExpiryBannerViewModel } from './types.ts'
 
+const FAVICON_B64 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
+
 const CLIENT_SCRIPT = `
 function _toggleCheck(row) {
   var c = row.querySelector('.check');
@@ -103,6 +106,44 @@ document.addEventListener('input', function(e) {
     }
   });
 })();
+window._lastSeenAt = Date.now();
+(function() {
+  var _origFavicon = '${FAVICON_B64}';
+  function _showBadge(n) {
+    document.title = '(' + n + ') GitHub Dashboard';
+    var c = document.createElement('canvas');
+    c.width = 32; c.height = 32;
+    var ctx = c.getContext('2d');
+    var img = new Image();
+    img.onload = function() {
+      ctx.drawImage(img, 0, 0, 32, 32);
+      ctx.fillStyle = '#f85149';
+      ctx.beginPath();
+      ctx.arc(24, 8, 8, 0, Math.PI * 2);
+      ctx.fill();
+      var link = document.querySelector('link[rel="icon"]');
+      if (link) link.href = c.toDataURL();
+    };
+    img.src = _origFavicon;
+  }
+  function _clearBadge() {
+    document.title = 'GitHub Dashboard';
+    var link = document.querySelector('link[rel="icon"]');
+    if (link) link.href = _origFavicon;
+    window._lastSeenAt = Date.now();
+  }
+  document.body.addEventListener('htmx:configRequest', function(e) {
+    if (e.detail.path === '/api/cards')
+      e.detail.headers['X-Last-Seen-Event-At'] = String(window._lastSeenAt);
+  });
+  document.body.addEventListener('newEvents', function(e) {
+    var n = (e.detail && e.detail.count) || 0;
+    if (n > 0) _showBadge(n);
+  });
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) _clearBadge();
+  });
+})();
 `
 
 const SEVERITY_COLOR: Record<PatExpirySeverity, string> = {
@@ -151,6 +192,7 @@ export function toDashboardViewModel(
 
 const FAVICON_B64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvklEQVR4AexXu0oDQRS9s5WPRIwgRhAMVppeSefmE4QUVv6ATVptkvxBGnvtLAJ+wq5d0D5aiYVgRDBi4qMb5yyZzd2NgQzsiMIOOTtz7p3cc+ZOCKxDbGQW8242t+IpSEvwFpbydWIjNKAEPSGkp3Kugq2PK6WscROBgWHApnDkQDCBAyPoQBwBEJvY2ZqPl3cz6sodJb5LvzBOj9bHVNSV13AFVlt/uLdMZ8eFQBxrgHXDhYEgafOxvTkXlIf49e0HXd28BxwP6wZOLp6hE4KLI5iYgVypShvV+xDgEEC7YaJ40CHM4IhrJGpAF8WsDeDEEEYMMzjWGokZ0AVN59TA/+pAtlih1cp5CHDTO4/vN+pARhngBeKc56ZdGxmYtqjJvtTA3+vA7FqJ8DeqAW5yp6Z7xzowowzwInHOc0msxwwkUdSkRmog7QA64PMfzddDm1PifNBpRXKc99rNSC7OI8kR8dV7gWiMONGnMoAva4DrfF8ZeGztkwa4zmH/XbNAGuA6N2kWQlw6g9cuOgBM2mclrsQbby/dOq6A+r2nMgJWlH4u6kMcqcAAFggMTSTaDdRm8KUUZRxYx74BAAD//84JbboAAAAGSURBVAMASp+zzZ65b4wAAAAASUVORK5CYII='
+
 
 export function renderSetupPage(error?: string): string {
   return `<!DOCTYPE html><html lang="en"><head>
