@@ -423,6 +423,33 @@ describe('ActivityService', () => {
     cleanupTempDir(dir)
   })
 
+  test('countNewSince delegates to repo and returns count', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    const cutoff = new Date('2026-06-23T10:00:00Z')
+
+    repos.activity.upsertActivities('alice/alpha', [
+      {
+        repoFullName: 'alice/alpha',
+        eventType: 'pr_opened',
+        actor: '@bob',
+        subject: 'opened #1 — test',
+        linkUrl: 'https://github.com/alice/alpha/pull/1',
+        occurredAt: new Date('2026-06-23T10:01:00Z'),
+        recordedAt: new Date('2026-06-23T10:01:00Z'),
+        githubEventId: 'x',
+      },
+    ])
+
+    const service = createActivityService(repos, makeClient())
+    expect(service.countNewSince(cutoff)).toBe(1)
+    expect(service.countNewSince(new Date('2026-06-23T10:02:00Z'))).toBe(0)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('sync removes resolved Dependabot alerts no longer returned by API', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
     cleanup.push(dir)

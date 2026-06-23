@@ -22,3 +22,12 @@ export function htmxTrigger(body: string, event: string): Response {
     },
   })
 }
+
+export function htmlWithTrigger(body: string, trigger: Record<string, unknown>): Response {
+  return new Response(body, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'HX-Trigger': JSON.stringify(trigger),
+    },
+  })
+}

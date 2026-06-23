@@ -24,6 +24,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
 function makeActivityService(overrides: Partial<ActivityService> = {}): ActivityService {
   return {
     sync: mock(async () => ({ activities: [], refreshNeeded: new Set<RefreshHint>() })),
+    countNewSince: mock(() => 0),
     ...overrides,
   }
 }
@@ -262,6 +263,65 @@ describe('card routes', () => {
     await route.handle(new Request(url.href), url)
 
     expect(getUser).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/cards includes HX-Trigger newEvents when countNewSince > 0', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    const activityService = makeActivityService({
+      countNewSince: mock(() => 3),
+    })
+    const routes = createCardRoutes(
+      makeCardService(repos),
+      activityService,
+      repos.auth,
+      makeClient(),
+    )
+
+    const url = new URL('http://localhost:4242/api/cards')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+
+    const req = new Request(url.href, {
+      headers: { 'X-Last-Seen-Event-At': '0' },
+    })
+    const res = await route.handle(req, url)
+
+    const trigger = res.headers.get('HX-Trigger')
+    if (!trigger) throw new Error('HX-Trigger header missing')
+    const parsed = JSON.parse(trigger)
+    expect(parsed.newEvents.count).toBe(3)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/cards omits HX-Trigger when countNewSince returns 0', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    const activityService = makeActivityService({
+      countNewSince: mock(() => 0),
+    })
+    const routes = createCardRoutes(
+      makeCardService(repos),
+      activityService,
+      repos.auth,
+      makeClient(),
+    )
+
+    const url = new URL('http://localhost:4242/api/cards')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+
+    const req = new Request(url.href, {
+      headers: { 'X-Last-Seen-Event-At': String(Date.now()) },
+    })
+    const res = await route.handle(req, url)
+
+    expect(res.headers.get('HX-Trigger')).toBeNull()
 
     repos.close()
     cleanupTempDir(dir)

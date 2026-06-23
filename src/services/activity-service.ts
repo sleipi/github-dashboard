@@ -13,6 +13,7 @@ export type SyncResult = {
 
 export type ActivityService = {
   sync(fullName: string): Promise<SyncResult>
+  countNewSince(since: Date): number
 }
 
 export function createActivityService(repos: Repos, client: GitHubClient): ActivityService {
@@ -65,6 +66,10 @@ export function createActivityService(repos: Repos, client: GitHubClient): Activ
         activities: repos.activity.getActivities(fullName),
         refreshNeeded: hints,
       }
+    },
+
+    countNewSince(since: Date) {
+      return repos.activity.countNewSince(since)
     },
   }
 }

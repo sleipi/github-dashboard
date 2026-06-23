@@ -10,7 +10,7 @@ import {
   toCardViewModel,
 } from '../templates/card-template.ts'
 import { renderDashboard, toDashboardViewModel } from '../templates/page-template.ts'
-import { html, htmxTrigger, redirect } from './route-handler.ts'
+import { html, htmlWithTrigger, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
 
 async function buildCardVm(
@@ -82,7 +82,7 @@ export function createCardRoutes(
     // GET /api/cards — HTMX partial for all cards
     {
       match: (url, method) => url.pathname === '/api/cards' && method === 'GET',
-      async handle() {
+      async handle(req) {
         const pinned = cardService.getPinned()
         const results = await Promise.allSettled(
           pinned.map((fullName) => buildCardVm(fullName, cardService, activityService)),
@@ -93,7 +93,16 @@ export function createCardRoutes(
               r.status === 'fulfilled',
           )
           .map((r) => r.value)
-        return html(renderCards(vms))
+
+        const rawTs = req.headers.get('X-Last-Seen-Event-At')
+        const sinceMs = rawTs !== null ? Number(rawTs) : 0
+        const since = new Date(Number.isFinite(sinceMs) ? sinceMs : 0)
+        const newCount = activityService.countNewSince(since)
+        const cardsHtml = renderCards(vms)
+
+        return newCount > 0
+          ? htmlWithTrigger(cardsHtml, { newEvents: { count: newCount } })
+          : html(cardsHtml)
       },
     },
     // GET /api/card/:owner/:repo — single card
