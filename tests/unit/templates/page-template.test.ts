@@ -133,6 +133,23 @@ describe('renderDashboard', () => {
     expect(html).toContain('hx-post="/api/auth"')
     expect(html).toContain('type="password"')
   })
+
+  test('includes a refresh-info span in the header', () => {
+    const html = dashboard('', 'alice', '')
+    expect(html).toContain('id="refresh-info"')
+  })
+
+  test('includes JS to stamp initial time into refresh-info on load', () => {
+    const html = dashboard('', 'alice', '')
+    expect(html).toContain('toLocaleTimeString')
+    expect(html).toContain('refresh-info')
+  })
+
+  test('includes JS listeners for htmx:beforeRequest and htmx:afterSettle targeting cards', () => {
+    const html = dashboard('', 'alice', '')
+    expect(html).toContain('htmx:beforeRequest')
+    expect(html).toContain("target.id === 'cards'")
+  })
 })
 
 describe('toDashboardViewModel', () => {
