@@ -46,7 +46,7 @@ describe('toActivityModalViewModel', () => {
     const activity = makeActivity({ occurredAt: new Date('2026-06-22T10:00:00Z') })
     const vm = toActivityModalViewModel('alice/alpha', [activity], now)
     // biome-ignore lint/style/noNonNullAssertion: test array with known length
-    expect(vm.activities[0]!.timeAgo).toContain('Std.')
+    expect(vm.activities[0]!.timeAgo).toContain('h ago')
   })
 
   test('linkUrl is passed through unchanged', () => {

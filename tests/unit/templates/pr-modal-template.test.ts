@@ -98,8 +98,8 @@ describe('toPrModalViewModel', () => {
     // biome-ignore lint/style/noNonNullAssertion: test array with known length
     const row = vm.prs[0]!
     expect(vm.fullName).toBe('alice/alpha')
-    expect(row.createdAt).toContain('Std.')
-    expect(row.updatedAt).toContain('Min.')
+    expect(row.createdAt).toContain('h ago')
+    expect(row.updatedAt).toContain('m ago')
   })
 
   test('pre-computes ciColor from ciStatus', () => {
