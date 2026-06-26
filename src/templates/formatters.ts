@@ -79,11 +79,13 @@ export function formatDepBadgeTrend(trend: DependabotTrend): string {
     if (n <= -100) return '-99+'
     return String(n)
   }
-  const parts: string[] = []
-  if (trend.week !== null) parts.push(`week ${fmt(trend.week)}`)
-  if (trend.month !== null) parts.push(`month ${fmt(trend.month)}`)
-  if (trend.sixMonths !== null) parts.push(`6month ${fmt(trend.sixMonths)}`)
-  return parts.join(' | ')
+  const w = trend.week
+  const m = trend.month ?? trend.week
+  const h = trend.sixMonths ?? trend.month ?? trend.week
+  const ww = w !== null ? fmt(w) : '?'
+  const mm = m !== null ? fmt(m) : '?'
+  const hh = h !== null ? fmt(h) : '?'
+  return `week ${ww} | month ${mm} | 6month ${hh}`
 }
 
 export function formatDepLabel(count: number, trend: DependabotTrend): string {
@@ -97,9 +99,11 @@ export function formatDepLabel(count: number, trend: DependabotTrend): string {
   if (trend.week === null && trend.month === null && trend.sixMonths === null) return base
 
   const fmt = (n: number) => (n > 0 ? `+${n}` : String(n))
-  const parts: string[] = []
-  if (trend.week !== null) parts.push(`${fmt(trend.week)} this week`)
-  if (trend.month !== null) parts.push(`${fmt(trend.month)} this month`)
-  if (trend.sixMonths !== null) parts.push(`${fmt(trend.sixMonths)} last 6 months`)
-  return `${base}\n${parts.join(' · ')}`
+  const w = trend.week
+  const m = trend.month ?? trend.week
+  const h = trend.sixMonths ?? trend.month ?? trend.week
+  const ww = w !== null ? fmt(w) : '?'
+  const mm = m !== null ? fmt(m) : '?'
+  const hh = h !== null ? fmt(h) : '?'
+  return `${base}\n${ww} this week · ${mm} this month · ${hh} last 6 months`
 }
