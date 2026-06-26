@@ -5,10 +5,11 @@ import {
   aggregateCiStatus,
   ciColor,
   ciLabel,
+  depBgColor,
   depColor,
   escapeHtml,
+  formatDepLabel,
   formatRelative,
-  formatTrend,
 } from './formatters.ts'
 import type { ActivityItemViewModel, CardViewModel, PrRowViewModel } from './types.ts'
 
@@ -63,7 +64,6 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   })
 
   const dep = cache.dependabotCount ?? 0
-  const trendStr = formatTrend(trend)
 
   const displayActivities = activities.slice(0, MAX_ACTIVITIES_ON_CARD)
   const activityMore = Math.max(0, activities.length - MAX_ACTIVITIES_ON_CARD)
@@ -80,15 +80,8 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     showCiDot: overallCi !== null,
     depDisplay: dep === 0 ? '✓' : dep >= 100 ? '99+' : String(dep),
     depColor: depColor(dep),
-    depLabel:
-      dep === 0
-        ? 'No Dependabot alerts'
-        : dep >= 100
-          ? '99+ open Dependabot alerts'
-          : `${dep} open Dependabot alert${dep === 1 ? '' : 's'}`,
-    depTrend: trendStr,
-    hasDepTrend: trendStr.length > 0,
-    depCollecting: trendStr.length === 0,
+    depBg: depBgColor(dep),
+    depLabel: formatDepLabel(dep, trend),
     activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
     hasActivities: displayActivities.length > 0,
     activityMore,
@@ -144,11 +137,9 @@ export function renderCard(vm: CardViewModel): string {
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:11px">
       <span style="color:#8b949e">⏱ ${vm.lastCommit}</span>
       <a href="${vm.securityUrl}" target="_blank" rel="noopener noreferrer"
-         style="color:${vm.depColor};display:flex;align-items:center;gap:4px;text-decoration:none"
+         style="display:inline-flex;align-items:center;gap:3px;text-decoration:none;background:${vm.depBg};color:${vm.depColor};padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500"
          title="${vm.depLabel}">
         🛡 ${vm.depDisplay}
-        ${vm.hasDepTrend ? `<span style="font-size:10px;color:#6e7681">${vm.depTrend}</span>` : ''}
-        ${vm.depCollecting ? `<span style="font-size:10px;color:#484f58" title="Building history…">···</span>` : ''}
       </a>
     </div>
     ${

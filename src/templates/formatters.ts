@@ -66,10 +66,28 @@ export function ageRowStyle(date: Date | null, now: Date = new Date()): string {
   return ''
 }
 
-export function formatTrend(trend: DependabotTrend): string {
-  const parts: string[] = []
-  if (trend.week !== null) parts.push((trend.week > 0 ? '+' : '') + trend.week)
-  if (trend.month !== null) parts.push((trend.month > 0 ? '+' : '') + trend.month)
-  if (trend.sixMonths !== null) parts.push((trend.sixMonths > 0 ? '+' : '') + trend.sixMonths)
-  return parts.length ? `(${parts.join(', ')})` : ''
+export function depBgColor(count: number): string {
+  if (count === 0) return 'rgba(63,185,80,0.12)'
+  if (count > 5) return 'rgba(248,81,73,0.15)'
+  return 'rgba(210,153,34,0.15)'
+}
+
+export function formatDepLabel(count: number, trend: DependabotTrend): string {
+  const base =
+    count === 0
+      ? 'No Dependabot alerts'
+      : count >= 100
+        ? '99+ open Dependabot alerts'
+        : `${count} open Dependabot alert${count === 1 ? '' : 's'}`
+
+  if (trend.week === null && trend.month === null && trend.sixMonths === null) return base
+
+  const fmt = (n: number) => (n > 0 ? `+${n}` : String(n))
+  const w = trend.week
+  const m = trend.month ?? trend.week
+  const h = trend.sixMonths ?? trend.month ?? trend.week
+  const ww = w !== null ? fmt(w) : '?'
+  const mm = m !== null ? fmt(m) : '?'
+  const hh = h !== null ? fmt(h) : '?'
+  return `${base}\n${ww} this week · ${mm} this month · ${hh} last 6 months`
 }

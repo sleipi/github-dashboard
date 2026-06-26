@@ -27,10 +27,8 @@ export type CardViewModel = {
   readonly showCiDot: boolean
   readonly depDisplay: string
   readonly depColor: string
+  readonly depBg: string
   readonly depLabel: string
-  readonly depTrend: string
-  readonly hasDepTrend: boolean
-  readonly depCollecting: boolean
   readonly activities: readonly ActivityItemViewModel[]
   readonly hasActivities: boolean
   readonly activityMore: number

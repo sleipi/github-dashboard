@@ -76,6 +76,23 @@ describe('toCardViewModel', () => {
     expect(vm.depLabel).toBe('99+ open Dependabot alerts')
   })
 
+  test('depBg is green for 0 dependabot alerts', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    expect(vm.depBg).toBe('rgba(63,185,80,0.12)')
+  })
+
+  test('depLabel includes trend with propagated values when only week data present', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 3 },
+      trend: { week: 1, month: null, sixMonths: null },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depLabel).toContain('+1 this week')
+    expect(vm.depLabel).toContain('+1 this month')
+    expect(vm.depLabel).toContain('+1 last 6 months')
+  })
+
   test('borderStyle has grey border and no glow when lastCommitAt is null', () => {
     const data: CardData = {
       ...emptyCardData('alice/unknown'),

@@ -2,10 +2,11 @@ import { describe, expect, test } from 'bun:test'
 import {
   ageRowStyle,
   aggregateCiStatus,
+  depBgColor,
   depColor,
   escapeHtml,
+  formatDepLabel,
   formatRelative,
-  formatTrend,
 } from '../../../src/templates/formatters.ts'
 
 const now = new Date('2026-06-20T12:00:00Z')
@@ -40,12 +41,62 @@ describe('aggregateCiStatus', () => {
   })
 })
 
-describe('formatTrend', () => {
-  test('formats positive and negative deltas', () => {
-    expect(formatTrend({ week: 2, month: -1, sixMonths: null })).toBe('(+2, -1)')
+describe('depBgColor', () => {
+  test('green bg for 0 alerts', () => {
+    expect(depBgColor(0)).toBe('rgba(63,185,80,0.12)')
   })
-  test('returns empty string when all null', () => {
-    expect(formatTrend({ week: null, month: null, sixMonths: null })).toBe('')
+  test('red bg for > 5 alerts', () => {
+    expect(depBgColor(6)).toBe('rgba(248,81,73,0.15)')
+  })
+  test('orange bg for 1-5 alerts', () => {
+    expect(depBgColor(3)).toBe('rgba(210,153,34,0.15)')
+  })
+})
+
+describe('formatDepLabel', () => {
+  test('base label only when all trend null', () => {
+    expect(formatDepLabel(5, { week: null, month: null, sixMonths: null })).toBe(
+      '5 open Dependabot alerts',
+    )
+  })
+  test('no alerts base label', () => {
+    expect(formatDepLabel(0, { week: null, month: null, sixMonths: null })).toBe(
+      'No Dependabot alerts',
+    )
+  })
+  test('99+ label when count >= 100', () => {
+    expect(formatDepLabel(100, { week: null, month: null, sixMonths: null })).toBe(
+      '99+ open Dependabot alerts',
+    )
+  })
+  test('singular label for 1 alert', () => {
+    expect(formatDepLabel(1, { week: null, month: null, sixMonths: null })).toBe(
+      '1 open Dependabot alert',
+    )
+  })
+  test('all three periods when all trend data present', () => {
+    const label = formatDepLabel(5, { week: 2, month: -1, sixMonths: 0 })
+    expect(label).toContain('+2 this week')
+    expect(label).toContain('-1 this month')
+    expect(label).toContain('0 last 6 months')
+  })
+  test('propagates week value to month and 6-month when only week data exists', () => {
+    const label = formatDepLabel(3, { week: 2, month: null, sixMonths: null })
+    expect(label).toContain('+2 this week')
+    expect(label).toContain('+2 this month')
+    expect(label).toContain('+2 last 6 months')
+  })
+  test('propagates month value to 6-month when month exists but sixMonths null', () => {
+    const label = formatDepLabel(3, { week: 1, month: 3, sixMonths: null })
+    expect(label).toContain('+1 this week')
+    expect(label).toContain('+3 this month')
+    expect(label).toContain('+3 last 6 months')
+  })
+  test('shows ? for week when only sixMonths data exists', () => {
+    const label = formatDepLabel(3, { week: null, month: null, sixMonths: 4 })
+    expect(label).toContain('? this week')
+    expect(label).toContain('? this month')
+    expect(label).toContain('+4 last 6 months')
   })
 })
 
