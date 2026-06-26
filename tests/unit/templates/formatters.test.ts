@@ -8,6 +8,7 @@ import {
   formatDepBadgeTrend,
   formatDepLabel,
   formatRelative,
+  freshAgeStyle,
 } from '../../../src/templates/formatters.ts'
 
 const now = new Date('2026-06-20T12:00:00Z')
@@ -188,5 +189,49 @@ describe('escapeHtml', () => {
   })
   test('leaves plain strings unchanged', () => {
     expect(escapeHtml('hello world')).toBe('hello world')
+  })
+})
+
+describe('freshAgeStyle', () => {
+  test('returns empty string for null date', () => {
+    expect(freshAgeStyle(null, now)).toBe('')
+  })
+
+  test('returns max-opacity green for a brand-new item (0 hours old)', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 30_000), now)
+    expect(style).toContain('rgba(34,197,94,0.5)')
+  })
+
+  test('returns lower-opacity green for a 3-hour-old item', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 3 * 3_600_000), now)
+    expect(style).toContain('rgba(34,197,94,0.25)')
+  })
+
+  test('returns faintest green for a 5-hour-old item', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 5 * 3_600_000), now)
+    expect(style).toContain('rgba(34,197,94,0.08)')
+  })
+
+  test('returns empty string for item 6 hours old (out of green window)', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 6 * 3_600_000), now)
+    expect(style).toBe('')
+  })
+
+  test('returns empty string for item 3 days old', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 3 * 86_400_000), now)
+    expect(style).toBe('')
+  })
+
+  test('falls back to red scale for item older than 7 days', () => {
+    const style = freshAgeStyle(new Date(now.getTime() - 10 * 86_400_000), now)
+    expect(style).toContain('rgba(248,113,113,')
+  })
+
+  test('opacity is lower for 3h old item than brand-new item', () => {
+    const newStyle = freshAgeStyle(new Date(now.getTime() - 0), now)
+    const oldStyle = freshAgeStyle(new Date(now.getTime() - 3 * 3_600_000), now)
+    const extract = (s: string) =>
+      Number.parseFloat(s.match(/rgba\(34,197,94,([^)]+)\)/)?.[1] ?? '0')
+    expect(extract(newStyle)).toBeGreaterThan(extract(oldStyle))
   })
 })

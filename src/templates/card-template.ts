@@ -1,7 +1,6 @@
 import type { Activity, CiStatus } from '../db/types.ts'
 import type { CardData } from '../services/card-service.ts'
 import {
-  ageRowStyle,
   aggregateCiStatus,
   ciColor,
   ciLabel,
@@ -11,12 +10,12 @@ import {
   formatDepBadgeTrend,
   formatDepLabel,
   formatRelative,
+  freshAgeStyle,
 } from './formatters.ts'
 import type { ActivityItemViewModel, CardViewModel, PrRowViewModel } from './types.ts'
 
 const MAX_PRS_ON_CARD = 5
 const MAX_ACTIVITIES_ON_CARD = 5
-const HIGHLIGHT_OPACITIES = [0.5, 0.42, 0.33, 0.25, 0.17, 0.08] as const
 
 function buildBorderStyle(lastCommitAt: Date | null): string {
   if (!lastCommitAt) return 'border-color:#30363d'
@@ -34,7 +33,7 @@ function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel 
     text: `${a.actor} ${a.subject}`,
     linkUrl: a.linkUrl,
     timeAgo: formatRelative(a.occurredAt, now),
-    ageBgStyle: ageRowStyle(a.occurredAt, now),
+    ageBgStyle: freshAgeStyle(a.occurredAt, now),
   }
 }
 
@@ -49,10 +48,6 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   const overallCi = aggregateCiStatus(ciStatuses)
 
   const prRows: PrRowViewModel[] = displayPrs.map((pr) => {
-    const ageHours = Math.floor((now.getTime() - pr.createdAt.getTime()) / 3_600_000)
-    const opacityIdx = ageHours < 6 ? ageHours : null
-    const freshStyle =
-      opacityIdx !== null ? `background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[opacityIdx]})` : null
     return {
       number: pr.number,
       title: pr.title,
@@ -60,7 +55,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
       ciColor: ciColor(pr.ciStatus),
       ciLabel: ciLabel(pr.ciStatus),
       prUrl: pr.prUrl,
-      highlightStyle: freshStyle ?? ageRowStyle(pr.createdAt, now),
+      highlightStyle: freshAgeStyle(pr.createdAt, now),
     }
   })
 
@@ -151,16 +146,17 @@ export function renderCard(vm: CardViewModel): string {
         ? `
     <div style="border-top:1px solid #21262d;padding-top:7px;margin-bottom:8px;display:flex;flex-direction:column;gap:2px">
       ${vm.activities
-        .map(
-          (a) => `
+        .map((a) => {
+          const textColor = a.ageBgStyle ? '#c9d1d9' : '#8b949e'
+          return `
       <a href="${escapeHtml(a.linkUrl)}" target="_blank" rel="noopener noreferrer"
-         style="display:flex;align-items:baseline;gap:5px;font-size:11px;color:#8b949e;text-decoration:none;padding:1px 4px;border-radius:3px;margin:0 -4px${a.ageBgStyle ? `;${a.ageBgStyle}` : ''}"
-         onmouseover="this.style.color='#c9d1d9'" onmouseout="this.style.color='#8b949e'"
+         style="display:flex;align-items:baseline;gap:5px;font-size:11px;color:${textColor};text-decoration:none;padding:1px 4px;border-radius:3px;margin:0 -4px${a.ageBgStyle ? `;${a.ageBgStyle}` : ''}"
+         onmouseover="this.style.color='#c9d1d9'" onmouseout="this.style.color='${textColor}'"
          title="${escapeHtml(a.text)} · ${escapeHtml(a.timeAgo)}">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(a.text)}</span>
         <span style="flex-shrink:0;font-size:10px;color:#484f58">${escapeHtml(a.timeAgo)}</span>
-      </a>`,
-        )
+      </a>`
+        })
         .join('')}
       ${
         vm.hasActivityMore

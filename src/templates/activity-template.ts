@@ -1,5 +1,5 @@
 import type { Activity } from '../db/types.ts'
-import { ageRowStyle, escapeHtml, formatRelative } from './formatters.ts'
+import { escapeHtml, formatRelative, freshAgeStyle } from './formatters.ts'
 import type { ActivityModalItem, ActivityModalViewModel } from './types.ts'
 
 export function toActivityModalViewModel(
@@ -15,7 +15,7 @@ export function toActivityModalViewModel(
         linkUrl: a.linkUrl,
         text: `${a.actor} ${a.subject}`,
         timeAgo: formatRelative(a.occurredAt, now),
-        ageBgStyle: ageRowStyle(a.occurredAt, now),
+        ageBgStyle: freshAgeStyle(a.occurredAt, now),
       }),
     ),
   }

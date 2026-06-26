@@ -78,6 +78,14 @@ describe('ActivityModalItem — ageBgStyle', () => {
     // biome-ignore lint/style/noNonNullAssertion: test array with known length
     expect(vm.activities[0]!.ageBgStyle).toContain('rgba(248,113,113,')
   })
+
+  test('ageBgStyle contains green rgba for activity less than 6 hours old', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const activity = makeActivity({ occurredAt: new Date('2026-06-22T10:00:00Z') }) // 2 hours old
+    const vm = toActivityModalViewModel('alice/alpha', [activity], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.activities[0]!.ageBgStyle).toContain('rgba(34,197,94,')
+  })
 })
 
 describe('renderActivityModal', () => {

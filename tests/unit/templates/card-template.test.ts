@@ -221,6 +221,13 @@ describe('ActivityItemViewModel — ageBgStyle', () => {
     ])
     expect(vm.activities[0]?.ageBgStyle).toContain('rgba(248,113,113,')
   })
+
+  test('ageBgStyle contains green rgba for activity less than 6 hours old', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [
+      makeActivity(new Date(Date.now() - 2 * 3_600_000)),
+    ])
+    expect(vm.activities[0]?.ageBgStyle).toContain('rgba(34,197,94,')
+  })
 })
 
 describe('renderCard — activity timeAgo', () => {

@@ -66,6 +66,19 @@ export function ageRowStyle(date: Date | null, now: Date = new Date()): string {
   return ''
 }
 
+const FRESH_OPACITIES = [0.5, 0.42, 0.33, 0.25, 0.17, 0.08] as const
+
+/**
+ * Returns a green highlight for items < 6 hours old, then falls back to ageRowStyle (red scale).
+ * Mirrors the PR freshness colouring logic.
+ */
+export function freshAgeStyle(date: Date | null, now: Date = new Date()): string {
+  if (!date) return ''
+  const ageHours = Math.floor((now.getTime() - date.getTime()) / 3_600_000)
+  if (ageHours < 6) return `background:rgba(34,197,94,${FRESH_OPACITIES[ageHours]})`
+  return ageRowStyle(date, now)
+}
+
 export function depBgColor(count: number): string {
   if (count === 0) return 'rgba(63,185,80,0.12)'
   if (count > 5) return 'rgba(248,81,73,0.15)'
