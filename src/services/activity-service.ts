@@ -145,7 +145,7 @@ function mapEvents(
         review: { state: string; html_url: string }
         pull_request: { number: number; title: string; html_url: string }
       }
-      if (p.action !== 'submitted') continue
+      if (p.action !== 'submitted' && p.action !== 'created') continue
       const pr = p.pull_request
       if (p.review.state === 'approved') {
         activities.push({
