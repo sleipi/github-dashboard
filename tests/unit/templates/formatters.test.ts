@@ -56,15 +56,11 @@ describe('formatDepBadgeTrend', () => {
       'week 99+ | month -99+ | 6month 99+',
     )
   })
-  test('propagates week to month and 6-month when only week present', () => {
-    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe(
-      'week 2 | month 2 | 6month 2',
-    )
+  test('only shows periods with real data — no propagation', () => {
+    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe('week 2')
   })
-  test('propagates month to 6-month when sixMonths null', () => {
-    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe(
-      'week 1 | month 3 | 6month 3',
-    )
+  test('shows week and month when sixMonths null', () => {
+    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe('week 1 | month 3')
   })
 })
 
@@ -107,23 +103,23 @@ describe('formatDepLabel', () => {
     expect(label).toContain('-1 this month')
     expect(label).toContain('0 last 6 months')
   })
-  test('propagates week value to month and 6-month when only week data exists', () => {
+  test('only shows periods with real data — no propagation', () => {
     const label = formatDepLabel(3, { week: 2, month: null, sixMonths: null })
     expect(label).toContain('+2 this week')
-    expect(label).toContain('+2 this month')
-    expect(label).toContain('+2 last 6 months')
+    expect(label).not.toContain('this month')
+    expect(label).not.toContain('last 6 months')
   })
-  test('propagates month value to 6-month when month exists but sixMonths null', () => {
+  test('shows week and month when sixMonths null', () => {
     const label = formatDepLabel(3, { week: 1, month: 3, sixMonths: null })
     expect(label).toContain('+1 this week')
     expect(label).toContain('+3 this month')
-    expect(label).toContain('+3 last 6 months')
+    expect(label).not.toContain('last 6 months')
   })
-  test('shows ? for week when only sixMonths data exists', () => {
+  test('shows only sixMonths when only that data exists', () => {
     const label = formatDepLabel(3, { week: null, month: null, sixMonths: 4 })
-    expect(label).toContain('? this week')
-    expect(label).toContain('? this month')
     expect(label).toContain('+4 last 6 months')
+    expect(label).not.toContain('this week')
+    expect(label).not.toContain('this month')
   })
 })
 

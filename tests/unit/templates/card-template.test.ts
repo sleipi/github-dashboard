@@ -87,18 +87,18 @@ describe('toCardViewModel', () => {
     expect(vm.depBadgeTrend).toBe('')
   })
 
-  test('depBadgeTrend shows labeled pipe format with propagation', () => {
+  test('depBadgeTrend shows only periods with real data', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
       cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 5 },
       trend: { week: -2, month: null, sixMonths: null },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depBadgeTrend).toBe('week -2 | month -2 | 6month -2')
+    expect(vm.depBadgeTrend).toBe('week -2')
     expect(vm.hasDepBadgeTrend).toBe(true)
   })
 
-  test('depLabel includes trend with propagated values when only week data present', () => {
+  test('depLabel includes only periods with real trend data', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
       cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 3 },
@@ -106,8 +106,8 @@ describe('toCardViewModel', () => {
     }
     const vm = toCardViewModel(data, [])
     expect(vm.depLabel).toContain('+1 this week')
-    expect(vm.depLabel).toContain('+1 this month')
-    expect(vm.depLabel).toContain('+1 last 6 months')
+    expect(vm.depLabel).not.toContain('this month')
+    expect(vm.depLabel).not.toContain('last 6 months')
   })
 
   test('borderStyle has grey border and no glow when lastCommitAt is null', () => {
