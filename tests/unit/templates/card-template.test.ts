@@ -87,14 +87,14 @@ describe('toCardViewModel', () => {
     expect(vm.depBadgeTrend).toBe('')
   })
 
-  test('depBadgeTrend shows inline parens format with propagation', () => {
+  test('depBadgeTrend shows labeled pipe format with propagation', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
       cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 5 },
       trend: { week: -2, month: null, sixMonths: null },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depBadgeTrend).toBe('(-2, -2, -2)')
+    expect(vm.depBadgeTrend).toBe('week -2 | month -2 | 6month -2')
     expect(vm.hasDepBadgeTrend).toBe(true)
   })
 

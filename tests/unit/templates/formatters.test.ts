@@ -46,14 +46,25 @@ describe('formatDepBadgeTrend', () => {
   test('returns empty string when all null', () => {
     expect(formatDepBadgeTrend({ week: null, month: null, sixMonths: null })).toBe('')
   })
-  test('formats all three values with signs', () => {
-    expect(formatDepBadgeTrend({ week: -4, month: 10, sixMonths: 99 })).toBe('(-4, +10, +99)')
+  test('formats labeled pipe-separated values without + prefix', () => {
+    expect(formatDepBadgeTrend({ week: -4, month: 10, sixMonths: 99 })).toBe(
+      'week -4 | month 10 | 6month 99',
+    )
+  })
+  test('caps values at 99+ when >= 100', () => {
+    expect(formatDepBadgeTrend({ week: 150, month: -200, sixMonths: 100 })).toBe(
+      'week 99+ | month -99+ | 6month 99+',
+    )
   })
   test('propagates week to month and 6-month when only week present', () => {
-    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe('(+2, +2, +2)')
+    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe(
+      'week 2 | month 2 | 6month 2',
+    )
   })
   test('propagates month to 6-month when sixMonths null', () => {
-    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe('(+1, +3, +3)')
+    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe(
+      'week 1 | month 3 | 6month 3',
+    )
   })
 })
 
