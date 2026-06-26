@@ -62,6 +62,24 @@ describe('toActivityModalViewModel', () => {
   })
 })
 
+describe('ActivityModalItem — ageBgStyle', () => {
+  test('ageBgStyle is empty for recent activity', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const activity = makeActivity({ occurredAt: new Date('2026-06-20T12:00:00Z') }) // 2 days old
+    const vm = toActivityModalViewModel('alice/alpha', [activity], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.activities[0]!.ageBgStyle).toBe('')
+  })
+
+  test('ageBgStyle contains orange rgba for activity older than 7 days', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const activity = makeActivity({ occurredAt: new Date('2026-06-10T12:00:00Z') }) // 12 days old
+    const vm = toActivityModalViewModel('alice/alpha', [activity], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.activities[0]!.ageBgStyle).toContain('rgba(248,113,113,')
+  })
+})
+
 describe('renderActivityModal', () => {
   test('renders fullName in header', () => {
     const html = renderActivityModal('alice/alpha', [])

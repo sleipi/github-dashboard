@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  ageRowStyle,
   aggregateCiStatus,
   depColor,
   escapeHtml,
@@ -57,6 +58,35 @@ describe('depColor', () => {
   })
   test('yellow for 1–5 alerts', () => {
     expect(depColor(3)).toBe('#d29922')
+  })
+})
+
+describe('ageRowStyle', () => {
+  test('returns empty string for null date', () => {
+    expect(ageRowStyle(null, now)).toBe('')
+  })
+  test('returns empty string for date 5 days old', () => {
+    expect(ageRowStyle(new Date(now.getTime() - 5 * 86_400_000), now)).toBe('')
+  })
+  test('returns faint orange for 8 days old', () => {
+    expect(ageRowStyle(new Date(now.getTime() - 8 * 86_400_000), now)).toContain(
+      'rgba(248,113,113,0.07)',
+    )
+  })
+  test('returns stronger orange for 20 days old', () => {
+    expect(ageRowStyle(new Date(now.getTime() - 20 * 86_400_000), now)).toContain(
+      'rgba(248,113,113,0.11)',
+    )
+  })
+  test('returns medium orange for 45 days old', () => {
+    expect(ageRowStyle(new Date(now.getTime() - 45 * 86_400_000), now)).toContain(
+      'rgba(248,113,113,0.16)',
+    )
+  })
+  test('returns max orange for 100 days old', () => {
+    expect(ageRowStyle(new Date(now.getTime() - 100 * 86_400_000), now)).toContain(
+      'rgba(248,113,113,0.22)',
+    )
   })
 })
 

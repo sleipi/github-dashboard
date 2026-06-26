@@ -56,6 +56,16 @@ export function depColor(count: number): string {
   return '#d29922'
 }
 
+export function ageRowStyle(date: Date | null, now: Date = new Date()): string {
+  if (!date) return ''
+  const days = (now.getTime() - date.getTime()) / 86_400_000
+  if (days > 90) return 'background:rgba(248,113,113,0.22)'
+  if (days > 30) return 'background:rgba(248,113,113,0.16)'
+  if (days > 14) return 'background:rgba(248,113,113,0.11)'
+  if (days > 7) return 'background:rgba(248,113,113,0.07)'
+  return ''
+}
+
 export function formatTrend(trend: DependabotTrend): string {
   const parts: string[] = []
   if (trend.week !== null) parts.push((trend.week > 0 ? '+' : '') + trend.week)

@@ -1,5 +1,5 @@
 import type { Activity } from '../db/types.ts'
-import { escapeHtml, formatRelative } from './formatters.ts'
+import { ageRowStyle, escapeHtml, formatRelative } from './formatters.ts'
 import type { ActivityModalItem, ActivityModalViewModel } from './types.ts'
 
 export function toActivityModalViewModel(
@@ -15,6 +15,7 @@ export function toActivityModalViewModel(
         linkUrl: a.linkUrl,
         text: `${a.actor} ${a.subject}`,
         timeAgo: formatRelative(a.occurredAt, now),
+        ageBgStyle: ageRowStyle(a.occurredAt, now),
       }),
     ),
   }
@@ -42,8 +43,9 @@ export function renderActivityModal(fullName: string, activities: Activity[]): s
                 (a) => `
       <a href="${escapeHtml(a.linkUrl)}" target="_blank" rel="noopener noreferrer"
          style="display:flex;align-items:baseline;gap:10px;padding:9px 16px;
-                border-bottom:1px solid #21262d;text-decoration:none;color:inherit"
-         onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background=''">
+                border-bottom:1px solid #21262d;text-decoration:none;color:inherit${a.ageBgStyle ? `;${a.ageBgStyle}` : ''}"
+         onmouseover="this._bg=this.style.background;this.style.background='#1c2128'"
+         onmouseout="this.style.background=this._bg||''">
         <span style="font-size:12px;color:#c9d1d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">
           ${escapeHtml(a.text)}
         </span>

@@ -1,5 +1,5 @@
 import type { PullRequest } from '../db/types.ts'
-import { ciColor, ciLabel, escapeHtml, formatRelative } from './formatters.ts'
+import { ageRowStyle, ciColor, ciLabel, escapeHtml, formatRelative } from './formatters.ts'
 import type { LabelViewModel, PrModalViewModel, PrRowModalItem } from './types.ts'
 
 function labelStyle(hexColor: string): string {
@@ -27,6 +27,7 @@ export function toPrModalViewModel(
         creator: escapeHtml(pr.creator),
         createdAt: formatRelative(pr.createdAt, now),
         updatedAt: formatRelative(pr.updatedAt, now),
+        ageBgStyle: ageRowStyle(pr.createdAt, now),
         labels: pr.labels.map(
           (l): LabelViewModel => ({
             name: escapeHtml(l.name),
@@ -65,8 +66,9 @@ export function renderPrModal(fullName: string, prs: PullRequest[]): string {
       <a href="${pr.prUrl}" target="_blank" rel="noopener noreferrer"
          style="display:grid;grid-template-columns:76px 1fr 130px 106px 118px;
                 padding:8px 16px;border-bottom:1px solid #21262d;
-                text-decoration:none;color:inherit;align-items:center"
-         onmouseover="this.style.background='#1c2128'" onmouseout="this.style.background=''">
+                text-decoration:none;color:inherit;align-items:center${pr.ageBgStyle ? `;${pr.ageBgStyle}` : ''}"
+         onmouseover="this._bg=this.style.background;this.style.background='#1c2128'"
+         onmouseout="this.style.background=this._bg||''">
         <div style="display:flex;align-items:center;gap:5px">
           <div class="ci-dot" style="background:${pr.ciColor}" title="${pr.ciLabel}"></div>
           <span style="font-size:11px;color:#6e7681;font-family:monospace">#${pr.number}</span>

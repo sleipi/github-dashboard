@@ -161,6 +161,55 @@ describe('toCardViewModel', () => {
   })
 })
 
+describe('ActivityItemViewModel — ageBgStyle', () => {
+  const makeActivity = (occurredAt: Date): Activity => ({
+    id: 1,
+    repoFullName: 'alice/alpha',
+    eventType: 'pr_merged',
+    actor: 'bob',
+    subject: 'merged #1',
+    linkUrl: 'https://github.com/alice/alpha/pull/1',
+    occurredAt,
+    recordedAt: new Date(),
+    githubEventId: 'evt_1',
+  })
+
+  test('ageBgStyle is empty for recent activity (3 days old)', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [
+      makeActivity(new Date(Date.now() - 3 * 86_400_000)),
+    ])
+    expect(vm.activities[0]?.ageBgStyle).toBe('')
+  })
+
+  test('ageBgStyle contains orange rgba for activity older than 7 days', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [
+      makeActivity(new Date(Date.now() - 10 * 86_400_000)),
+    ])
+    expect(vm.activities[0]?.ageBgStyle).toContain('rgba(248,113,113,')
+  })
+})
+
+describe('renderCard — activity timeAgo', () => {
+  test('renders timeAgo text inline (not only in title attr) for activity items', () => {
+    const activity: Activity = {
+      id: 1,
+      repoFullName: 'alice/alpha',
+      eventType: 'pr_merged',
+      actor: 'bob',
+      subject: 'merged #1',
+      linkUrl: 'https://github.com/alice/alpha/pull/1',
+      occurredAt: new Date(Date.now() - 5 * 3_600_000),
+      recordedAt: new Date(),
+      githubEventId: 'evt_1',
+    }
+    const html = renderCard(toCardViewModel(emptyCardData('alice/alpha'), [activity]))
+    expect(html).toContain('h ago')
+    const titleAttr = html.match(/title="[^"]*"/)
+    const nonTitleOccurrences = html.replace(titleAttr?.[0] ?? '', '')
+    expect(nonTitleOccurrences).toContain('h ago')
+  })
+})
+
 describe('PrRowViewModel — highlightStyle', () => {
   const basePr = (overrides: Partial<{ createdAt: Date; number: number; prUrl: string }> = {}) => ({
     repoFullName: 'alice/alpha',
@@ -185,6 +234,12 @@ describe('PrRowViewModel — highlightStyle', () => {
     const pr = basePr({ createdAt: new Date() })
     const vm = toCardViewModel({ ...emptyCardData('alice/alpha'), prs: [pr] }, [])
     expect(vm.prs[0]?.highlightStyle).toContain('rgba(34,197,94,')
+  })
+
+  test('highlightStyle contains orange rgba for a PR older than 7 days', () => {
+    const pr = basePr({ createdAt: new Date(Date.now() - 10 * 86_400_000) })
+    const vm = toCardViewModel({ ...emptyCardData('alice/alpha'), prs: [pr] }, [])
+    expect(vm.prs[0]?.highlightStyle).toContain('rgba(248,113,113,')
   })
 
   test('opacity is lower for a 3-hour-old PR than a brand-new one', () => {

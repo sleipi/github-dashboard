@@ -87,6 +87,24 @@ describe('renderPrModal', () => {
   })
 })
 
+describe('PrRowModalItem — ageBgStyle', () => {
+  test('ageBgStyle is empty for a PR created 3 days ago', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const pr = makePr({ createdAt: new Date('2026-06-19T12:00:00Z') })
+    const vm = toPrModalViewModel('alice/alpha', [pr], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.prs[0]!.ageBgStyle).toBe('')
+  })
+
+  test('ageBgStyle contains orange rgba for a PR older than 7 days', () => {
+    const now = new Date('2026-06-22T12:00:00Z')
+    const pr = makePr({ createdAt: new Date('2026-06-10T12:00:00Z') }) // 12 days old
+    const vm = toPrModalViewModel('alice/alpha', [pr], now)
+    // biome-ignore lint/style/noNonNullAssertion: test array with known length
+    expect(vm.prs[0]!.ageBgStyle).toContain('rgba(248,113,113,')
+  })
+})
+
 describe('toPrModalViewModel', () => {
   test('maps fullName and pre-formats relative timestamps', () => {
     const now = new Date('2026-06-22T12:00:00Z')

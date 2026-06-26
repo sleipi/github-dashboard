@@ -2,6 +2,7 @@ export type ActivityItemViewModel = {
   readonly text: string
   readonly linkUrl: string
   readonly timeAgo: string
+  readonly ageBgStyle: string
 }
 
 export type PrRowViewModel = {
@@ -77,6 +78,7 @@ export type PrRowModalItem = {
   readonly createdAt: string
   readonly updatedAt: string
   readonly labels: readonly LabelViewModel[]
+  readonly ageBgStyle: string
 }
 
 export type PrModalViewModel = {
@@ -88,6 +90,7 @@ export type ActivityModalItem = {
   readonly linkUrl: string
   readonly text: string
   readonly timeAgo: string
+  readonly ageBgStyle: string
 }
 
 export type ActivityModalViewModel = {

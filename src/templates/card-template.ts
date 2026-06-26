@@ -1,6 +1,7 @@
 import type { Activity, CiStatus } from '../db/types.ts'
 import type { CardData } from '../services/card-service.ts'
 import {
+  ageRowStyle,
   aggregateCiStatus,
   ciColor,
   ciLabel,
@@ -31,6 +32,7 @@ function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel 
     text: `${a.actor} ${a.subject}`,
     linkUrl: a.linkUrl,
     timeAgo: formatRelative(a.occurredAt, now),
+    ageBgStyle: ageRowStyle(a.occurredAt, now),
   }
 }
 
@@ -47,6 +49,8 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   const prRows: PrRowViewModel[] = displayPrs.map((pr) => {
     const ageHours = Math.floor((now.getTime() - pr.createdAt.getTime()) / 3_600_000)
     const opacityIdx = ageHours < 6 ? ageHours : null
+    const freshStyle =
+      opacityIdx !== null ? `background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[opacityIdx]})` : null
     return {
       number: pr.number,
       title: pr.title,
@@ -54,8 +58,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
       ciColor: ciColor(pr.ciStatus),
       ciLabel: ciLabel(pr.ciStatus),
       prUrl: pr.prUrl,
-      highlightStyle:
-        opacityIdx !== null ? `background:rgba(34,197,94,${HIGHLIGHT_OPACITIES[opacityIdx]})` : '',
+      highlightStyle: freshStyle ?? ageRowStyle(pr.createdAt, now),
     }
   })
 
@@ -156,10 +159,11 @@ export function renderCard(vm: CardViewModel): string {
         .map(
           (a) => `
       <a href="${escapeHtml(a.linkUrl)}" target="_blank" rel="noopener noreferrer"
-         style="display:block;font-size:11px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none;padding:1px 0"
+         style="display:flex;align-items:baseline;gap:5px;font-size:11px;color:#8b949e;text-decoration:none;padding:1px 4px;border-radius:3px;margin:0 -4px${a.ageBgStyle ? `;${a.ageBgStyle}` : ''}"
          onmouseover="this.style.color='#c9d1d9'" onmouseout="this.style.color='#8b949e'"
          title="${escapeHtml(a.text)} · ${escapeHtml(a.timeAgo)}">
-        ${escapeHtml(a.text)}
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(a.text)}</span>
+        <span style="flex-shrink:0;font-size:10px;color:#484f58">${escapeHtml(a.timeAgo)}</span>
       </a>`,
         )
         .join('')}
