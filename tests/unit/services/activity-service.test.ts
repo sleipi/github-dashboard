@@ -206,11 +206,13 @@ describe('ActivityService', () => {
           actor: { login: 'bob' },
           payload: {
             action: 'merged',
+            number: 51,
             pull_request: {
+              base: { ref: 'main' },
+              head: { ref: 'feat/new-thing' },
+              id: 12345,
               number: 51,
-              title: 'feat: new thing',
-              merged: null,
-              html_url: 'https://github.com/alice/alpha/pull/51',
+              url: 'https://api.github.com/repos/alice/alpha/pulls/51',
             },
           },
           repo: { name: 'alice/alpha' },
@@ -227,7 +229,8 @@ describe('ActivityService', () => {
     expect(result.refreshNeeded.has('prs')).toBe(true)
     expect(result.activities).toHaveLength(1)
     expect(result.activities[0]?.eventType).toBe('pr_merged')
-    expect(result.activities[0]?.subject).toBe('merged #51 — feat: new thing')
+    expect(result.activities[0]?.subject).toBe('merged #51')
+    expect(result.activities[0]?.linkUrl).toBe('https://github.com/alice/alpha/pull/51')
 
     repos.close()
     cleanupTempDir(dir)
@@ -257,8 +260,7 @@ describe('ActivityService', () => {
             },
             pull_request: {
               number: 49,
-              title: 'feat: something',
-              html_url: 'https://github.com/alice/alpha/pull/49',
+              url: 'https://api.github.com/repos/alice/alpha/pulls/49',
             },
           },
           repo: { name: 'alice/alpha' },
@@ -274,7 +276,10 @@ describe('ActivityService', () => {
 
     expect(result.activities).toHaveLength(1)
     expect(result.activities[0]?.eventType).toBe('pr_review_approved')
-    expect(result.activities[0]?.subject).toBe('approved #49 — feat: something')
+    expect(result.activities[0]?.subject).toBe('approved #49')
+    expect(result.activities[0]?.linkUrl).toBe(
+      'https://github.com/alice/alpha/pull/49#pullrequestreview-1',
+    )
 
     repos.close()
     cleanupTempDir(dir)

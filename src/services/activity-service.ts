@@ -95,17 +95,19 @@ function mapEvents(
     if (event.type === 'PullRequestEvent') {
       const p = event.payload as {
         action: string
-        pull_request: { number: number; title: string; merged: boolean; html_url: string }
+        pull_request: { number: number; title?: string; merged?: boolean | null; html_url?: string }
       }
       const pr = p.pull_request
+      const prUrl = pr.html_url ?? `https://github.com/${fullName}/pull/${pr.number}`
+      const prLabel = pr.title ? `#${pr.number} — ${pr.title}` : `#${pr.number}`
       if (p.action === 'opened') {
         hints.add('prs')
         activities.push({
           repoFullName: fullName,
           eventType: 'pr_opened',
           actor,
-          subject: `opened #${pr.number} — ${pr.title}`,
-          linkUrl: pr.html_url,
+          subject: `opened ${prLabel}`,
+          linkUrl: prUrl,
           occurredAt,
           recordedAt: now,
           githubEventId: event.id,
@@ -116,8 +118,8 @@ function mapEvents(
           repoFullName: fullName,
           eventType: 'pr_merged',
           actor,
-          subject: `merged #${pr.number} — ${pr.title}`,
-          linkUrl: pr.html_url,
+          subject: `merged ${prLabel}`,
+          linkUrl: prUrl,
           occurredAt,
           recordedAt: now,
           githubEventId: event.id,
@@ -125,15 +127,13 @@ function mapEvents(
       } else if (p.action === 'closed') {
         hints.add('prs')
         const eventType: ActivityEventType = pr.merged ? 'pr_merged' : 'pr_abandoned'
-        const subject = pr.merged
-          ? `merged #${pr.number} — ${pr.title}`
-          : `closed #${pr.number} without merging`
+        const subject = pr.merged ? `merged ${prLabel}` : `closed #${pr.number} without merging`
         activities.push({
           repoFullName: fullName,
           eventType,
           actor,
           subject,
-          linkUrl: pr.html_url,
+          linkUrl: prUrl,
           occurredAt,
           recordedAt: now,
           githubEventId: event.id,
@@ -143,17 +143,19 @@ function mapEvents(
       const p = event.payload as {
         action: string
         review: { state: string; html_url: string }
-        pull_request: { number: number; title: string; html_url: string }
+        pull_request: { number: number; title?: string; html_url?: string }
       }
       if (p.action !== 'submitted' && p.action !== 'created') continue
       const pr = p.pull_request
+      const reviewUrl = p.review.html_url
+      const prLabel = pr.title ? `#${pr.number} — ${pr.title}` : `#${pr.number}`
       if (p.review.state === 'approved') {
         activities.push({
           repoFullName: fullName,
           eventType: 'pr_review_approved',
           actor,
-          subject: `approved #${pr.number} — ${pr.title}`,
-          linkUrl: pr.html_url,
+          subject: `approved ${prLabel}`,
+          linkUrl: reviewUrl,
           occurredAt,
           recordedAt: now,
           githubEventId: event.id,
@@ -163,8 +165,8 @@ function mapEvents(
           repoFullName: fullName,
           eventType: 'pr_review_changes_requested',
           actor,
-          subject: `requested changes on #${pr.number} — ${pr.title}`,
-          linkUrl: pr.html_url,
+          subject: `requested changes on ${prLabel}`,
+          linkUrl: reviewUrl,
           occurredAt,
           recordedAt: now,
           githubEventId: event.id,
