@@ -110,6 +110,18 @@ function mapEvents(
           recordedAt: now,
           githubEventId: event.id,
         })
+      } else if (p.action === 'merged') {
+        hints.add('prs')
+        activities.push({
+          repoFullName: fullName,
+          eventType: 'pr_merged',
+          actor,
+          subject: `merged #${pr.number} — ${pr.title}`,
+          linkUrl: pr.html_url,
+          occurredAt,
+          recordedAt: now,
+          githubEventId: event.id,
+        })
       } else if (p.action === 'closed') {
         hints.add('prs')
         const eventType: ActivityEventType = pr.merged ? 'pr_merged' : 'pr_abandoned'
