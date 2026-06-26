@@ -5,6 +5,7 @@ import {
   depBgColor,
   depColor,
   escapeHtml,
+  formatDepBadgeTrend,
   formatDepLabel,
   formatRelative,
 } from '../../../src/templates/formatters.ts'
@@ -38,6 +39,21 @@ describe('aggregateCiStatus', () => {
   })
   test('all success returns success', () => {
     expect(aggregateCiStatus(['success', 'success'])).toBe('success')
+  })
+})
+
+describe('formatDepBadgeTrend', () => {
+  test('returns empty string when all null', () => {
+    expect(formatDepBadgeTrend({ week: null, month: null, sixMonths: null })).toBe('')
+  })
+  test('formats all three values with signs', () => {
+    expect(formatDepBadgeTrend({ week: -4, month: 10, sixMonths: 99 })).toBe('(-4, +10, +99)')
+  })
+  test('propagates week to month and 6-month when only week present', () => {
+    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe('(+2, +2, +2)')
+  })
+  test('propagates month to 6-month when sixMonths null', () => {
+    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe('(+1, +3, +3)')
   })
 })
 

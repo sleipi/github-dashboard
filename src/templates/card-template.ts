@@ -8,6 +8,7 @@ import {
   depBgColor,
   depColor,
   escapeHtml,
+  formatDepBadgeTrend,
   formatDepLabel,
   formatRelative,
 } from './formatters.ts'
@@ -64,6 +65,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   })
 
   const dep = cache.dependabotCount ?? 0
+  const badgeTrend = formatDepBadgeTrend(trend)
 
   const displayActivities = activities.slice(0, MAX_ACTIVITIES_ON_CARD)
   const activityMore = Math.max(0, activities.length - MAX_ACTIVITIES_ON_CARD)
@@ -82,6 +84,8 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     depColor: depColor(dep),
     depBg: depBgColor(dep),
     depLabel: formatDepLabel(dep, trend),
+    depBadgeTrend: badgeTrend,
+    hasDepBadgeTrend: badgeTrend.length > 0,
     activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
     hasActivities: displayActivities.length > 0,
     activityMore,
@@ -139,7 +143,7 @@ export function renderCard(vm: CardViewModel): string {
       <a href="${vm.securityUrl}" target="_blank" rel="noopener noreferrer"
          style="display:inline-flex;align-items:center;gap:3px;text-decoration:none;background:${vm.depBg};color:${vm.depColor};padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500"
          title="${vm.depLabel}">
-        🛡 ${vm.depDisplay}
+        🛡 ${vm.depDisplay}${vm.hasDepBadgeTrend ? ` <span style="font-size:10px;opacity:0.75">${vm.depBadgeTrend}</span>` : ''}
       </a>
     </div>
     ${

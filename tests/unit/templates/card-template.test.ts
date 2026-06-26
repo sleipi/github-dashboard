@@ -81,6 +81,23 @@ describe('toCardViewModel', () => {
     expect(vm.depBg).toBe('rgba(63,185,80,0.12)')
   })
 
+  test('hasDepBadgeTrend is false when trend is all null', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    expect(vm.hasDepBadgeTrend).toBe(false)
+    expect(vm.depBadgeTrend).toBe('')
+  })
+
+  test('depBadgeTrend shows inline parens format with propagation', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 5 },
+      trend: { week: -2, month: null, sixMonths: null },
+    }
+    const vm = toCardViewModel(data, [])
+    expect(vm.depBadgeTrend).toBe('(-2, -2, -2)')
+    expect(vm.hasDepBadgeTrend).toBe(true)
+  })
+
   test('depLabel includes trend with propagated values when only week data present', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),

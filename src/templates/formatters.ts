@@ -72,6 +72,18 @@ export function depBgColor(count: number): string {
   return 'rgba(210,153,34,0.15)'
 }
 
+export function formatDepBadgeTrend(trend: DependabotTrend): string {
+  if (trend.week === null && trend.month === null && trend.sixMonths === null) return ''
+  const fmt = (n: number) => (n > 0 ? `+${n}` : String(n))
+  const w = trend.week
+  const m = trend.month ?? trend.week
+  const h = trend.sixMonths ?? trend.month ?? trend.week
+  const ww = w !== null ? fmt(w) : '?'
+  const mm = m !== null ? fmt(m) : '?'
+  const hh = h !== null ? fmt(h) : '?'
+  return `(${ww}, ${mm}, ${hh})`
+}
+
 export function formatDepLabel(count: number, trend: DependabotTrend): string {
   const base =
     count === 0
