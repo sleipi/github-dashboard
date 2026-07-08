@@ -1,5 +1,5 @@
 import { createSqliteRepos } from '../../src/db/sqlite-repository.ts'
-import type { Activity, PullRequest } from '../../src/db/types.ts'
+import type { Activity, PullRequest, SecurityAlert } from '../../src/db/types.ts'
 
 const TEST_PAT = 'ghp_testtoken000000000000000000000000'
 const TEST_USER = 'testuser'
@@ -230,6 +230,63 @@ export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): 
     prTotal: 0,
     dependabotCount: 0,
   })
+
+  // Security alerts for alice/awesome-project
+  // critical, 10 days old → over 7d SLA → (!) on Critical
+  // high, 15 days old → within 30d SLA → no (!)
+  // medium, 100 days old → over 90d SLA → (!) on Medium
+  // low, 50 days old → within 180d SLA → no (!)
+  const secNow = new Date()
+  const securityAlerts: SecurityAlert[] = [
+    {
+      repoFullName: 'alice/awesome-project',
+      number: 1,
+      ecosystem: 'npm',
+      packageName: 'lodash',
+      title: 'Prototype Pollution in lodash',
+      severity: 'critical',
+      cvssScore: 9.8,
+      createdAt: new Date(secNow.getTime() - 10 * 86_400_000),
+      htmlUrl: 'https://github.com/alice/awesome-project/security/dependabot/1',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      number: 2,
+      ecosystem: 'pip',
+      packageName: 'requests',
+      title: 'SSRF in requests library',
+      severity: 'high',
+      cvssScore: 7.5,
+      createdAt: new Date(secNow.getTime() - 15 * 86_400_000),
+      htmlUrl: 'https://github.com/alice/awesome-project/security/dependabot/2',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      number: 3,
+      ecosystem: 'go',
+      packageName: 'golang.org/x/net',
+      title: 'HTTP/2 vulnerability',
+      severity: 'medium',
+      cvssScore: 5.3,
+      createdAt: new Date(secNow.getTime() - 100 * 86_400_000),
+      htmlUrl: 'https://github.com/alice/awesome-project/security/dependabot/3',
+    },
+    {
+      repoFullName: 'alice/awesome-project',
+      number: 4,
+      ecosystem: 'npm',
+      packageName: 'minimist',
+      title: 'Prototype Pollution in minimist',
+      severity: 'low',
+      cvssScore: null,
+      createdAt: new Date(secNow.getTime() - 50 * 86_400_000),
+      htmlUrl: 'https://github.com/alice/awesome-project/security/dependabot/4',
+    },
+  ]
+  repos.security.upsertAlerts('alice/awesome-project', securityAlerts)
+
+  // Default SLA settings (industry standard) — already the default, but explicit for test clarity
+  repos.sla.setSla({ critical: 7, high: 30, medium: 90, low: 180 })
 
   repos.close()
 }

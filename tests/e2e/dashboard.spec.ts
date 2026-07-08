@@ -601,3 +601,63 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('No repos pinned yet')).toBeVisible()
   })
 })
+
+test.describe('security badge', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+    await page.goto('/')
+    await page.waitForSelector('.card')
+  })
+
+  test('shows security badge with severity counts on card', async ({ page }) => {
+    const card = page.locator('.card').first()
+    await expect(card).toContainText('Critical')
+    await expect(card).toContainText('1')
+    await expect(card).toContainText('High')
+    await expect(card).toContainText('Medium')
+    await expect(card).toContainText('Low')
+  })
+
+  test('shows overdue indicator on critical and medium (over SLA), not on high and low', async ({
+    page,
+  }) => {
+    const card = page.locator('.card').first()
+    const badgeHtml = await card.locator('button[hx-get*="/api/security"]').innerHTML()
+    // Critical 10d old > 7d SLA → (!) expected
+    // Medium 100d old > 90d SLA → (!) expected
+    // The (!) spans are only inside the overdue severity spans
+    const criticalSpan = card
+      .locator('button[hx-get*="/api/security"] span')
+      .filter({ hasText: 'Critical' })
+    await expect(criticalSpan).toContainText('(!)')
+    expect(badgeHtml).toContain('(!)')
+  })
+
+  test('opens security modal on badge click', async ({ page }) => {
+    const card = page.locator('.card').first()
+    await card.locator('button[hx-get*="/api/security"]').click()
+    await page.waitForSelector('#modal table')
+    const modal = page.locator('#modal')
+    await expect(modal).toContainText('Security Alerts')
+    await expect(modal).toContainText('alice/awesome-project')
+  })
+
+  test('security modal shows all 4 alerts sorted by severity', async ({ page }) => {
+    const card = page.locator('.card').first()
+    await card.locator('button[hx-get*="/api/security"]').click()
+    await page.waitForSelector('#modal table')
+    const rows = page.locator('#modal table tbody tr')
+    await expect(rows).toHaveCount(4)
+    // First row should be critical
+    await expect(rows.first()).toContainText('Critical')
+  })
+
+  test('opens SLA settings modal on gear icon click', async ({ page }) => {
+    const card = page.locator('.card').first()
+    await card.locator('button[hx-get="/api/settings/sla"]').click()
+    await page.waitForSelector('#modal form')
+    const modal = page.locator('#modal')
+    await expect(modal).toContainText('Security SLA Settings')
+    await expect(modal).toContainText('industry standard')
+  })
+})
