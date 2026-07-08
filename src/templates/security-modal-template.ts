@@ -1,0 +1,116 @@
+import type { SecurityAlert, SlaSettings } from '../db/types.ts'
+import { escapeHtml } from './formatters.ts'
+
+export type SecurityAlertRowViewModel = {
+  readonly number: number
+  readonly ecosystem: string
+  readonly title: string
+  readonly severity: 'critical' | 'high' | 'medium' | 'low'
+  readonly cvssScore: number | null
+  readonly ageDays: number
+  readonly overdueBy: number | null
+  readonly htmlUrl: string
+}
+
+export type SecurityModalViewModel = {
+  readonly fullName: string
+  readonly rows: readonly SecurityAlertRowViewModel[]
+  readonly hasAlerts: boolean
+}
+
+const SEVERITY_ORDER: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+}
+
+const SEVERITY_COLOR: Record<string, string> = {
+  critical: '#f85149',
+  high: '#d29922',
+  medium: '#d29922',
+  low: '#8b949e',
+}
+
+export function toSecurityModalViewModel(
+  fullName: string,
+  alerts: readonly SecurityAlert[],
+  sla: SlaSettings,
+  now: Date,
+): SecurityModalViewModel {
+  const rows: SecurityAlertRowViewModel[] = alerts.map((a) => {
+    const ageDays = (now.getTime() - a.createdAt.getTime()) / 86_400_000
+    const slaDays = sla[a.severity]
+    const overdueBy = ageDays > slaDays ? Math.floor(ageDays - slaDays) : null
+    return {
+      number: a.number,
+      ecosystem: a.ecosystem,
+      title: a.title,
+      severity: a.severity,
+      cvssScore: a.cvssScore,
+      ageDays: Math.floor(ageDays),
+      overdueBy,
+      htmlUrl: a.htmlUrl,
+    }
+  })
+
+  const sorted = [...rows].sort((a, b) => {
+    const sevDiff = (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
+    if (sevDiff !== 0) return sevDiff
+    const aOverdue = a.overdueBy !== null
+    const bOverdue = b.overdueBy !== null
+    if (aOverdue !== bOverdue) return aOverdue ? -1 : 1
+    return a.ageDays - b.ageDays
+  })
+
+  return { fullName, rows: sorted, hasAlerts: sorted.length > 0 }
+}
+
+export function renderSecurityModal(vm: SecurityModalViewModel): string {
+  const safeFullName = escapeHtml(vm.fullName)
+  return `
+<div style="padding:20px;min-width:600px">
+  <h3 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#e6edf3">
+    Security Alerts — ${safeFullName}
+  </h3>
+  ${
+    !vm.hasAlerts
+      ? `<p style="color:#8b949e;font-size:13px">No open security alerts.</p>`
+      : `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="border-bottom:1px solid #30363d;color:#6e7681;text-align:left">
+          <th style="padding:6px 8px;font-weight:600">Ecosystem</th>
+          <th style="padding:6px 8px;font-weight:600">Title</th>
+          <th style="padding:6px 8px;font-weight:600">Severity</th>
+          <th style="padding:6px 8px;font-weight:600">Score</th>
+          <th style="padding:6px 8px;font-weight:600">Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${vm.rows.map(renderAlertRow).join('')}
+      </tbody>
+    </table>
+  </div>`
+  }
+</div>`
+}
+
+function renderAlertRow(row: SecurityAlertRowViewModel): string {
+  const rowBg = row.overdueBy !== null ? 'background:rgba(248,81,73,0.08)' : ''
+  const severityColor = SEVERITY_COLOR[row.severity] ?? '#8b949e'
+  const severityLabel = row.severity.charAt(0).toUpperCase() + row.severity.slice(1)
+  const ageText =
+    row.overdueBy !== null
+      ? `${row.ageDays}d · <span style="color:#f85149;font-weight:600">${row.overdueBy}d over SLA</span>`
+      : `${row.ageDays}d`
+
+  return `<tr style="border-bottom:1px solid #21262d;${rowBg};cursor:pointer"
+    onclick="window.open('${escapeHtml(row.htmlUrl)}','_blank','noopener,noreferrer')">
+    <td style="padding:7px 8px;color:#8b949e">${escapeHtml(row.ecosystem)}</td>
+    <td style="padding:7px 8px;color:#c9d1d9;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(row.title)}</td>
+    <td style="padding:7px 8px"><span style="color:${severityColor};font-weight:600">${severityLabel}</span></td>
+    <td style="padding:7px 8px;color:#8b949e;font-family:monospace">${row.cvssScore !== null ? row.cvssScore.toFixed(1) : '—'}</td>
+    <td style="padding:7px 8px;color:#8b949e;white-space:nowrap">${ageText}</td>
+  </tr>`
+}
