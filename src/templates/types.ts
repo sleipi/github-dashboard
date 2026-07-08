@@ -34,6 +34,7 @@ export type CardViewModel = {
   readonly secLowOverdue: boolean
   readonly secScopeAvailable: boolean
   readonly secHasAlerts: boolean
+  readonly secHtmxPath: string
   readonly activities: readonly ActivityItemViewModel[]
   readonly hasActivities: boolean
   readonly activityMore: number

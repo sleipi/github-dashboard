@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 .thumbnail
 node_modules/
 dist/

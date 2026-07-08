@@ -223,16 +223,19 @@ async function syncDependabotAlerts(
   }))
   repos.activity.replaceSecurityAlerts(fullName, activityAlerts)
 
-  const securityAlerts = alerts.map((a) => ({
-    repoFullName: fullName,
-    number: a.number,
-    ecosystem: a.ecosystem,
-    packageName: a.packageName,
-    title: a.summary,
-    severity: a.severity as 'critical' | 'high' | 'medium' | 'low',
-    cvssScore: a.cvssScore,
-    createdAt: new Date(a.createdAt),
-    htmlUrl: a.htmlUrl,
-  }))
+  const KNOWN_SEVERITIES = new Set(['critical', 'high', 'medium', 'low'])
+  const securityAlerts = alerts
+    .filter((a) => KNOWN_SEVERITIES.has(a.severity))
+    .map((a) => ({
+      repoFullName: fullName,
+      number: a.number,
+      ecosystem: a.ecosystem,
+      packageName: a.packageName,
+      title: a.summary,
+      severity: a.severity as 'critical' | 'high' | 'medium' | 'low',
+      cvssScore: a.cvssScore,
+      createdAt: new Date(a.createdAt),
+      htmlUrl: a.htmlUrl,
+    }))
   repos.security.upsertAlerts(fullName, securityAlerts)
 }

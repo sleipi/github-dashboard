@@ -90,10 +90,11 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     prMoreLabel: prMore === 1 ? '+ 1 more PR' : `+ ${prMore} more PRs`,
     loadingId: `ld-${fullName.replace(/[^a-z0-9]/gi, '-')}`,
     borderStyle: buildBorderStyle(cache.lastCommitAt),
+    secHtmxPath: `/api/security/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
   }
 }
 
-function renderSecurityBadge(vm: CardViewModel, safeOwner: string, safeName: string): string {
+function renderSecurityBadge(vm: CardViewModel): string {
   if (!vm.secScopeAvailable) {
     return `<span style="color:#6e7681">🔒 —</span>`
   }
@@ -103,7 +104,7 @@ function renderSecurityBadge(vm: CardViewModel, safeOwner: string, safeName: str
   const od = (flag: boolean) =>
     flag ? `<span style="color:#f85149;font-weight:700"> (!)</span>` : ''
   return `<button
-    hx-get="/api/security/${safeOwner}/${safeName}"
+    hx-get="${escapeHtml(vm.secHtmxPath)}"
     hx-target="#modal" hx-swap="innerHTML"
     style="display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:11px;color:inherit"
     title="View security alerts">
@@ -156,7 +157,7 @@ export function renderCard(vm: CardViewModel): string {
   <div class="card-body">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
       <span style="color:#8b949e">⏱ ${vm.lastCommit}</span>
-      ${renderSecurityBadge(vm, safeOwner, safeName)}
+      ${renderSecurityBadge(vm)}
       <button hx-get="/api/settings/sla" hx-target="#modal" hx-swap="innerHTML"
               style="background:transparent;border:none;cursor:pointer;color:#6e7681;padding:0;font-size:11px"
               title="Configure security SLA thresholds">⚙</button>

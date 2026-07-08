@@ -23,9 +23,10 @@ export function createSqliteSecurityAlertsRepo(db: Database): SecurityAlertsRepo
 
   return {
     upsertAlerts(fullName, alerts) {
+      const safeAlerts = alerts.filter((a) => a.htmlUrl.startsWith('https://'))
       db.transaction(() => {
         db.run('DELETE FROM security_alerts WHERE repo_full_name = ?', [fullName])
-        for (const a of alerts) {
+        for (const a of safeAlerts) {
           insert.run(
             fullName,
             a.number,

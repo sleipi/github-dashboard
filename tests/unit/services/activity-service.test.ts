@@ -473,6 +473,7 @@ describe('ActivityService', () => {
     const alert = activities.find((a) => a.eventType === 'security_alert')
     expect(alert?.subject).toBe('security: lodash — Prototype Pollution')
     expect(alert?.actor).toBe('@dependabot')
+    expect(repos.security.getAlerts('alice/alpha')).toHaveLength(1)
 
     repos.close()
     cleanupTempDir(dir)
