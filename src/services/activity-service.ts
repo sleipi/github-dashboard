@@ -210,7 +210,8 @@ async function syncDependabotAlerts(
 ): Promise<void> {
   const alerts = await client.getDependabotAlerts(fullName)
   const now = new Date()
-  const mapped = alerts.map((a) => ({
+
+  const activityAlerts = alerts.map((a) => ({
     repoFullName: fullName,
     eventType: 'security_alert' as ActivityEventType,
     actor: '@dependabot',
@@ -220,5 +221,18 @@ async function syncDependabotAlerts(
     recordedAt: now,
     githubEventId: null,
   }))
-  repos.activity.replaceSecurityAlerts(fullName, mapped)
+  repos.activity.replaceSecurityAlerts(fullName, activityAlerts)
+
+  const securityAlerts = alerts.map((a) => ({
+    repoFullName: fullName,
+    number: a.number,
+    ecosystem: a.ecosystem,
+    packageName: a.packageName,
+    title: a.summary,
+    severity: a.severity as 'critical' | 'high' | 'medium' | 'low',
+    cvssScore: a.cvssScore,
+    createdAt: new Date(a.createdAt),
+    htmlUrl: a.htmlUrl,
+  }))
+  repos.security.upsertAlerts(fullName, securityAlerts)
 }
