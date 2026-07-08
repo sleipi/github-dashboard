@@ -114,3 +114,40 @@ function renderAlertRow(row: SecurityAlertRowViewModel): string {
     <td style="padding:7px 8px;color:#8b949e;white-space:nowrap">${ageText}</td>
   </tr>`
 }
+
+const INDUSTRY_STANDARD: SlaSettings = { critical: 7, high: 30, medium: 90, low: 180 }
+
+export function renderSlaSettingsModal(current: SlaSettings): string {
+  const row = (label: string, key: keyof SlaSettings, inputName: string) => `
+  <tr>
+    <td style="padding:8px 0;color:#c9d1d9;font-size:13px;width:80px">${label}</td>
+    <td style="padding:8px 0">
+      <input type="number" name="${inputName}" value="${current[key]}" min="1" max="365"
+             style="width:70px;background:#0d1117;border:1px solid #30363d;border-radius:6px;
+                    color:#e6edf3;padding:4px 8px;font-size:13px;font-family:inherit"/>
+    </td>
+    <td style="padding:8px 0 8px 12px;color:#484f58;font-size:11px">
+      days &nbsp;·&nbsp; industry standard: ${INDUSTRY_STANDARD[key]} days
+    </td>
+  </tr>`
+
+  return `
+<div style="padding:20px">
+  <h3 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#e6edf3">Security SLA Settings</h3>
+  <form hx-post="/api/settings/sla" hx-target="#modal" hx-swap="innerHTML">
+    <table style="border-collapse:collapse">
+      ${row('Critical', 'critical', 'sla_critical_days')}
+      ${row('High', 'high', 'sla_high_days')}
+      ${row('Medium', 'medium', 'sla_medium_days')}
+      ${row('Low', 'low', 'sla_low_days')}
+    </table>
+    <div style="margin-top:16px">
+      <button type="submit"
+              style="background:#238636;border:1px solid rgba(240,246,252,0.1);border-radius:6px;
+                     color:#fff;padding:5px 16px;font-size:13px;cursor:pointer;font-family:inherit">
+        Save
+      </button>
+    </div>
+  </form>
+</div>`
+}

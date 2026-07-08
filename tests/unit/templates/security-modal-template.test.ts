@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { SecurityAlert, SlaSettings } from '../../../src/db/types.ts'
 import {
   renderSecurityModal,
+  renderSlaSettingsModal,
   toSecurityModalViewModel,
 } from '../../../src/templates/security-modal-template.ts'
 
@@ -139,5 +140,34 @@ describe('renderSecurityModal', () => {
     const html = renderSecurityModal(vm)
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;script&gt;')
+  })
+})
+
+describe('renderSlaSettingsModal', () => {
+  test('renders input for each severity with current values', () => {
+    const sla: SlaSettings = { critical: 7, high: 30, medium: 90, low: 180 }
+    const html = renderSlaSettingsModal(sla)
+    expect(html).toContain('value="7"')
+    expect(html).toContain('value="30"')
+    expect(html).toContain('value="90"')
+    expect(html).toContain('value="180"')
+  })
+
+  test('renders industry standard hint for each severity', () => {
+    const sla: SlaSettings = { critical: 7, high: 30, medium: 90, low: 180 }
+    const html = renderSlaSettingsModal(sla)
+    expect(html).toContain('industry standard')
+  })
+
+  test('form posts to /api/settings/sla', () => {
+    const html = renderSlaSettingsModal({ critical: 7, high: 30, medium: 90, low: 180 })
+    expect(html).toContain('hx-post="/api/settings/sla"')
+  })
+
+  test('renders custom values not equal to defaults', () => {
+    const sla: SlaSettings = { critical: 3, high: 14, medium: 60, low: 90 }
+    const html = renderSlaSettingsModal(sla)
+    expect(html).toContain('value="3"')
+    expect(html).toContain('value="14"')
   })
 })
