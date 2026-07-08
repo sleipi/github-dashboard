@@ -57,6 +57,33 @@ export type DependabotTrend = {
   readonly sixMonths: number | null
 }
 
+export type SecurityAlert = {
+  readonly repoFullName: string
+  readonly number: number
+  readonly ecosystem: string
+  readonly packageName: string
+  readonly title: string
+  readonly severity: 'critical' | 'high' | 'medium' | 'low'
+  readonly cvssScore: number | null
+  readonly createdAt: Date
+  readonly htmlUrl: string
+}
+
+export type SlaSettings = {
+  readonly critical: number
+  readonly high: number
+  readonly medium: number
+  readonly low: number
+}
+
+export type SecurityCounts = {
+  readonly critical: number
+  readonly high: number
+  readonly medium: number
+  readonly low: number
+  readonly overdueSeverities: ReadonlySet<'critical' | 'high' | 'medium' | 'low'>
+}
+
 export type ActivityEventType =
   | 'pr_merged'
   | 'pr_abandoned'

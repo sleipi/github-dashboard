@@ -67,6 +67,21 @@ const MIGRATIONS: Migration[] = [
   (db) => {
     db.run('ALTER TABLE activity_meta ADD COLUMN prs_cached_at TEXT')
   },
+  // v4: per-repo security alert details for badge and modal
+  (db) => {
+    db.run(`CREATE TABLE security_alerts (
+      repo_full_name TEXT NOT NULL,
+      number         INTEGER NOT NULL,
+      ecosystem      TEXT NOT NULL,
+      package_name   TEXT NOT NULL,
+      title          TEXT NOT NULL,
+      severity       TEXT NOT NULL,
+      cvss_score     REAL,
+      created_at     TEXT NOT NULL,
+      html_url       TEXT NOT NULL,
+      PRIMARY KEY (repo_full_name, number)
+    )`)
+  },
 ]
 
 export function runMigrations(db: Database): void {
