@@ -7,6 +7,7 @@ import { runMigrations } from './migrations.ts'
 import { createSqlitePrRepo } from './pull-requests/sqlite-pr-repo.ts'
 import type { Repos } from './repos.ts'
 import { createSqliteSecurityAlertsRepo } from './security/sqlite-security-alerts-repo.ts'
+import { createSqliteSlaRepo } from './sla/sqlite-sla-repo.ts'
 
 export function createSqliteRepos(dbPath: string): Repos {
   const db = new Database(dbPath, { create: true })
@@ -19,6 +20,7 @@ export function createSqliteRepos(dbPath: string): Repos {
     dependabot: createSqliteDependabotRepo(db),
     activity: createSqliteActivityRepo(db),
     security: createSqliteSecurityAlertsRepo(db),
+    sla: createSqliteSlaRepo(db),
     close() {
       db.close()
     },

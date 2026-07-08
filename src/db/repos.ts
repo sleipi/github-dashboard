@@ -4,6 +4,7 @@ import type { CardRepo } from './cards/card-repo.ts'
 import type { DependabotRepo } from './dependabot/dependabot-repo.ts'
 import type { PrRepo } from './pull-requests/pr-repo.ts'
 import type { SecurityAlertsRepo } from './security/security-alerts-repo.ts'
+import type { SlaRepo } from './sla/sla-repo.ts'
 
 export interface Repos {
   readonly auth: AuthRepo
@@ -12,5 +13,6 @@ export interface Repos {
   readonly dependabot: DependabotRepo
   readonly activity: ActivityRepo
   readonly security: SecurityAlertsRepo
+  readonly sla: SlaRepo
   close(): void
 }
