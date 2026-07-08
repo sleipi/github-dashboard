@@ -1,4 +1,4 @@
-import type { CiStatus, DependabotTrend } from '../db/types.ts'
+import type { CiStatus } from '../db/types.ts'
 
 export function escapeHtml(str: string): string {
   return str
@@ -50,12 +50,6 @@ export function aggregateCiStatus(statuses: CiStatus[]): CiStatus | null {
   return 'unknown'
 }
 
-export function depColor(count: number): string {
-  if (count === 0) return '#3fb950'
-  if (count > 5) return '#f85149'
-  return '#d29922'
-}
-
 export function ageRowStyle(date: Date | null, now: Date = new Date()): string {
   if (!date) return ''
   const days = (now.getTime() - date.getTime()) / 86_400_000
@@ -77,46 +71,4 @@ export function freshAgeStyle(date: Date | null, now: Date = new Date()): string
   const ageHours = Math.floor((now.getTime() - date.getTime()) / 3_600_000)
   if (ageHours < 6) return `background:rgba(34,197,94,${FRESH_OPACITIES[ageHours]})`
   return ageRowStyle(date, now)
-}
-
-export function depBgColor(count: number): string {
-  if (count === 0) return 'rgba(63,185,80,0.12)'
-  if (count > 5) return 'rgba(248,81,73,0.15)'
-  return 'rgba(210,153,34,0.15)'
-}
-
-export function formatDepBadgeTrend(trend: DependabotTrend): string {
-  if (trend.week === null && trend.month === null && trend.sixMonths === null) return ''
-  const fmt = (n: number) => {
-    if (n >= 100) return '99+'
-    if (n <= -100) return '-99+'
-    return String(n)
-  }
-  const w = trend.week
-  const m = trend.month ?? trend.week
-  const h = trend.sixMonths ?? trend.month ?? trend.week
-  const ww = w !== null ? fmt(w) : '?'
-  const mm = m !== null ? fmt(m) : '?'
-  const hh = h !== null ? fmt(h) : '?'
-  return `week ${ww} | month ${mm} | 6month ${hh}`
-}
-
-export function formatDepLabel(count: number, trend: DependabotTrend): string {
-  const base =
-    count === 0
-      ? 'No Dependabot alerts'
-      : count >= 100
-        ? '99+ open Dependabot alerts'
-        : `${count} open Dependabot alert${count === 1 ? '' : 's'}`
-
-  if (trend.week === null && trend.month === null && trend.sixMonths === null) return base
-
-  const fmt = (n: number) => (n > 0 ? `+${n}` : String(n))
-  const w = trend.week
-  const m = trend.month ?? trend.week
-  const h = trend.sixMonths ?? trend.month ?? trend.week
-  const ww = w !== null ? fmt(w) : '?'
-  const mm = m !== null ? fmt(m) : '?'
-  const hh = h !== null ? fmt(h) : '?'
-  return `${base}\n${ww} this week · ${mm} this month · ${hh} last 6 months`
 }

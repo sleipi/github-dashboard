@@ -45,18 +45,6 @@ export type PullRequest = {
   readonly updatedAt: Date
 }
 
-export type DependabotSnapshot = {
-  readonly repoFullName: string
-  readonly count: number
-  readonly recordedAt: Date
-}
-
-export type DependabotTrend = {
-  readonly week: number | null
-  readonly month: number | null
-  readonly sixMonths: number | null
-}
-
 export type SecurityAlert = {
   readonly repoFullName: string
   readonly number: number

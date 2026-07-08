@@ -2,11 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   ageRowStyle,
   aggregateCiStatus,
-  depBgColor,
-  depColor,
   escapeHtml,
-  formatDepBadgeTrend,
-  formatDepLabel,
   formatRelative,
   freshAgeStyle,
 } from '../../../src/templates/formatters.ts'
@@ -40,103 +36,6 @@ describe('aggregateCiStatus', () => {
   })
   test('all success returns success', () => {
     expect(aggregateCiStatus(['success', 'success'])).toBe('success')
-  })
-})
-
-describe('formatDepBadgeTrend', () => {
-  test('returns empty string when all null', () => {
-    expect(formatDepBadgeTrend({ week: null, month: null, sixMonths: null })).toBe('')
-  })
-  test('formats labeled pipe-separated values without + prefix', () => {
-    expect(formatDepBadgeTrend({ week: -4, month: 10, sixMonths: 99 })).toBe(
-      'week -4 | month 10 | 6month 99',
-    )
-  })
-  test('caps values at 99+ when >= 100', () => {
-    expect(formatDepBadgeTrend({ week: 150, month: -200, sixMonths: 100 })).toBe(
-      'week 99+ | month -99+ | 6month 99+',
-    )
-  })
-  test('propagates week to month and 6-month when only week present', () => {
-    expect(formatDepBadgeTrend({ week: 2, month: null, sixMonths: null })).toBe(
-      'week 2 | month 2 | 6month 2',
-    )
-  })
-  test('propagates month to 6-month when sixMonths null', () => {
-    expect(formatDepBadgeTrend({ week: 1, month: 3, sixMonths: null })).toBe(
-      'week 1 | month 3 | 6month 3',
-    )
-  })
-})
-
-describe('depBgColor', () => {
-  test('green bg for 0 alerts', () => {
-    expect(depBgColor(0)).toBe('rgba(63,185,80,0.12)')
-  })
-  test('red bg for > 5 alerts', () => {
-    expect(depBgColor(6)).toBe('rgba(248,81,73,0.15)')
-  })
-  test('orange bg for 1-5 alerts', () => {
-    expect(depBgColor(3)).toBe('rgba(210,153,34,0.15)')
-  })
-})
-
-describe('formatDepLabel', () => {
-  test('base label only when all trend null', () => {
-    expect(formatDepLabel(5, { week: null, month: null, sixMonths: null })).toBe(
-      '5 open Dependabot alerts',
-    )
-  })
-  test('no alerts base label', () => {
-    expect(formatDepLabel(0, { week: null, month: null, sixMonths: null })).toBe(
-      'No Dependabot alerts',
-    )
-  })
-  test('99+ label when count >= 100', () => {
-    expect(formatDepLabel(100, { week: null, month: null, sixMonths: null })).toBe(
-      '99+ open Dependabot alerts',
-    )
-  })
-  test('singular label for 1 alert', () => {
-    expect(formatDepLabel(1, { week: null, month: null, sixMonths: null })).toBe(
-      '1 open Dependabot alert',
-    )
-  })
-  test('all three periods when all trend data present', () => {
-    const label = formatDepLabel(5, { week: 2, month: -1, sixMonths: 0 })
-    expect(label).toContain('+2 this week')
-    expect(label).toContain('-1 this month')
-    expect(label).toContain('0 last 6 months')
-  })
-  test('propagates week value to month and 6-month when only week data exists', () => {
-    const label = formatDepLabel(3, { week: 2, month: null, sixMonths: null })
-    expect(label).toContain('+2 this week')
-    expect(label).toContain('+2 this month')
-    expect(label).toContain('+2 last 6 months')
-  })
-  test('propagates month value to 6-month when month exists but sixMonths null', () => {
-    const label = formatDepLabel(3, { week: 1, month: 3, sixMonths: null })
-    expect(label).toContain('+1 this week')
-    expect(label).toContain('+3 this month')
-    expect(label).toContain('+3 last 6 months')
-  })
-  test('shows ? for week when only sixMonths data exists', () => {
-    const label = formatDepLabel(3, { week: null, month: null, sixMonths: 4 })
-    expect(label).toContain('? this week')
-    expect(label).toContain('? this month')
-    expect(label).toContain('+4 last 6 months')
-  })
-})
-
-describe('depColor', () => {
-  test('green for 0 alerts', () => {
-    expect(depColor(0)).toBe('#3fb950')
-  })
-  test('red for > 5 alerts', () => {
-    expect(depColor(6)).toBe('#f85149')
-  })
-  test('yellow for 1–5 alerts', () => {
-    expect(depColor(3)).toBe('#d29922')
   })
 })
 

@@ -224,16 +224,6 @@ export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): 
     dependabotCachedAt: new Date(),
   })
 
-  // Dependabot-History
-  const now = new Date()
-  repos.dependabot.maybeRecordSnapshot(
-    'alice/awesome-project',
-    5,
-    new Date(now.getTime() - 8 * 86_400_000),
-    0,
-  )
-  repos.dependabot.maybeRecordSnapshot('alice/awesome-project', 3, now, 0)
-
   // Repo-Cache für another-repo (keine PRs)
   repos.pullRequests.upsertCache('alice/another-repo', {
     lastCommitAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
