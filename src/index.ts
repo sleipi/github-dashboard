@@ -9,6 +9,7 @@ import { createModalRoutes } from './routes/modal-route.ts'
 import { createPrRoutes } from './routes/pr-route.ts'
 import { redirect } from './routes/route-handler.ts'
 import type { RouteHandler } from './routes/route-handler.ts'
+import { createSecurityRoutes } from './routes/security-route.ts'
 import { startServer } from './server.ts'
 import { createActivityService } from './services/activity-service.ts'
 import { createCardService } from './services/card-service.ts'
@@ -26,6 +27,7 @@ const routes: RouteHandler[] = [
   ...createCardRoutes(cardService, activityService, repos.auth, client),
   ...createActivityRoutes(activityService, repos.auth),
   ...createModalRoutes(cardService, repos.cards, client),
+  ...createSecurityRoutes(repos.security, repos.sla),
   ...createPrRoutes(repos.pullRequests),
 ]
 
