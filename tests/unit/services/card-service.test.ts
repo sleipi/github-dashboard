@@ -127,39 +127,6 @@ describe('CardService', () => {
     cleanupTempDir(dir)
   })
 
-  test('getCard records a dependabot snapshot using count from repos.activity', async () => {
-    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
-    const repos = createSqliteRepos(dbPath)
-
-    // Seed 5 security_alert activities so getDependabotCount returns 5
-    const now = new Date()
-    repos.activity.upsertActivities(
-      'alice/alpha',
-      Array.from({ length: 5 }, (_, i) => ({
-        repoFullName: 'alice/alpha',
-        eventType: 'security_alert' as const,
-        actor: 'dependabot',
-        subject: `alert-${i + 1}`,
-        linkUrl: `https://github.com/alice/alpha/security/dependabot/${i + 1}`,
-        occurredAt: now,
-        recordedAt: now,
-        githubEventId: null,
-      })),
-    )
-
-    const service = createCardService(repos, makeClient())
-
-    repos.cards.pin('alice/alpha')
-    await service.getCard('alice/alpha', new Set(['prs', 'commits', 'ci']))
-
-    const history = repos.dependabot.getHistory('alice/alpha')
-    expect(history.length).toBeGreaterThan(0)
-    expect(history[0]?.count).toBe(5)
-
-    repos.close()
-    cleanupTempDir(dir)
-  })
-
   test('getAllRepos delegates to client.getRepos', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)

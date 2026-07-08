@@ -1,18 +1,16 @@
 // src/services/card-service.ts
 import type { Repos } from '../db/repos.ts'
-import type { DependabotTrend, PullRequest, RefreshHint, RepoCache } from '../db/types.ts'
+import type { PullRequest, RefreshHint, RepoCache, SecurityCounts } from '../db/types.ts'
 import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
-import { calculateTrend } from './dependabot-service.ts'
+import { calculateSecurityCounts } from './security-service.ts'
 
 const MAX_CI_CHECKS = 3
-const DEP_INTERVAL_MS = 30 * 60 * 1000
-const DEP_PRUNE_DAYS = 183
 
 export type CardData = {
   readonly fullName: string
   readonly cache: RepoCache
   readonly prs: ReadonlyArray<PullRequest>
-  readonly trend: DependabotTrend
+  readonly securityCounts: SecurityCounts
 }
 
 export type CardService = {
@@ -41,13 +39,11 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
           : Promise.resolve(undefined),
       ])
     } catch (err) {
-      // GitHub API unreachable — serve existing cache if available, else propagate
       if (!existing) throw err
       return
     }
 
     if (githubPrs !== null && refreshNeeded.has('prs')) {
-      // Fetched new PRs — also refresh CI for top MAX_CI_CHECKS
       const prsWithCi: PullRequest[] = await Promise.all(
         githubPrs.slice(0, MAX_CI_CHECKS).map(async (pr) => ({
           repoFullName: fullName,
@@ -76,8 +72,6 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
       }))
       repos.pullRequests.upsertPrs(fullName, [...prsWithCi, ...prsRest])
       repos.activity.upsertMeta(fullName, { prsCachedAt: now })
-    } else if (refreshNeeded.has('ci') && !refreshNeeded.has('prs')) {
-      // CI-only skip: no fresh PR SHAs available, leave stored CI status as-is
     }
 
     const depCount = repos.activity.getDependabotCount(fullName)
@@ -89,9 +83,6 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
       prTotal,
       dependabotCount: depCount,
     })
-
-    repos.dependabot.maybeRecordSnapshot(fullName, depCount, now, DEP_INTERVAL_MS)
-    repos.dependabot.pruneOld(DEP_PRUNE_DAYS, now)
   }
 
   async function getCard(
@@ -106,15 +97,15 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const cache = repos.pullRequests.getCache(fullName)
     if (!cache) throw new Error(`Cache missing for ${fullName} after fetch`)
 
-    // Always reflect current activity count in the returned cache
     const depCount = repos.activity.getDependabotCount(fullName)
     const cacheWithDep: RepoCache = { ...cache, dependabotCount: depCount }
 
     const prs = repos.pullRequests.getPrs(fullName)
-    const history = repos.dependabot.getHistory(fullName)
-    const trend = calculateTrend(history, new Date())
+    const alerts = repos.security.getAlerts(fullName)
+    const sla = repos.sla.getSla()
+    const securityCounts = calculateSecurityCounts(alerts, sla, new Date())
 
-    return { fullName, cache: cacheWithDep, prs, trend }
+    return { fullName, cache: cacheWithDep, prs, securityCounts }
   }
 
   return {
