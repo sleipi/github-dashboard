@@ -41,9 +41,11 @@ export type GitHubEvent = {
 
 export type GitHubDependabotAlert = {
   readonly number: number
+  readonly ecosystem: string
   readonly packageName: string
   readonly summary: string
   readonly severity: string
+  readonly cvssScore: number | null
   readonly htmlUrl: string
   readonly createdAt: string
 }
@@ -281,16 +283,22 @@ export function createGitHubClient(
         if (!res.ok) return []
         const raw = (await res.json()) as Array<{
           number: number
-          dependency: { package: { name: string } }
-          security_advisory: { summary: string; severity: string }
+          dependency: { package: { name: string; ecosystem: string } }
+          security_advisory: {
+            summary: string
+            severity: string
+            cvss: { score: number } | null
+          }
           html_url: string
           created_at: string
         }>
         return raw.map((a) => ({
           number: a.number,
+          ecosystem: a.dependency.package.ecosystem,
           packageName: a.dependency.package.name,
           summary: a.security_advisory.summary,
           severity: a.security_advisory.severity,
+          cvssScore: a.security_advisory.cvss?.score ?? null,
           htmlUrl: a.html_url,
           createdAt: a.created_at,
         }))

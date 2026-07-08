@@ -455,9 +455,11 @@ describe('ActivityService', () => {
     const getDependabotAlerts = mock(async () => [
       {
         number: 1,
+        ecosystem: 'npm',
         packageName: 'lodash',
         summary: 'Prototype Pollution',
         severity: 'critical',
+        cvssScore: 9.8,
         htmlUrl: 'https://github.com/alice/alpha/security/dependabot/1',
         createdAt: '2026-06-20T08:00:00Z',
       },
@@ -501,9 +503,11 @@ describe('ActivityService', () => {
     const getDependabotAlerts = mock(async () => [
       {
         number: 1,
+        ecosystem: 'npm',
         packageName: 'lodash',
         summary: 'Prototype Pollution',
         severity: 'critical',
+        cvssScore: 9.8,
         htmlUrl: 'https://github.com/alice/alpha/security/dependabot/1',
         createdAt: '2026-06-20T08:00:00Z',
       },
@@ -583,9 +587,11 @@ describe('ActivityService', () => {
     const getDependabotAlerts = mock(async () => [
       {
         number: 1,
+        ecosystem: 'npm',
         packageName: 'lodash',
         summary: 'Prototype Pollution',
         severity: 'critical',
+        cvssScore: 9.8,
         htmlUrl: 'https://github.com/alice/alpha/security/dependabot/1',
         createdAt: '2026-06-20T08:00:00Z',
       },
