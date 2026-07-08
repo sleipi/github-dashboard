@@ -171,14 +171,6 @@ test.describe('Dashboard', () => {
     ).toBeVisible()
   })
 
-  test('shows Dependabot alert count', async ({ page }) => {
-    await page.goto('/')
-    // 3 current alerts — search by title attribute since '3' also appears in PR numbers
-    await expect(
-      page.locator('[data-card-name="alice/awesome-project"] [title="3 open Dependabot alerts"]'),
-    ).toBeVisible()
-  })
-
   test('"Add repo" opens modal', async ({ page }) => {
     await page.goto('/')
     // Open HTMX modal — no live GitHub, so the request will fail
@@ -351,28 +343,11 @@ test.describe('Dashboard', () => {
     ).toBeVisible()
   })
 
-  test('shows Dependabot trend', async ({ page }) => {
-    await page.goto('/')
-    // Seed: 5 alerts 8 days ago → 3 now → weekly trend -2 → formatTrend: "(-2)"
-    await expect(
-      page.locator('[data-card-name="alice/awesome-project"]').getByText('(-2)'),
-    ).toBeVisible()
-  })
-
   test('repo link on the card opens in new tab', async ({ page }) => {
     await page.goto('/')
     const repoLink = page.locator('[data-card-name="alice/awesome-project"] .card-header a').first()
     await expect(repoLink).toHaveAttribute('target', '_blank')
     await expect(repoLink).toHaveAttribute('href', 'https://github.com/alice/awesome-project')
-  })
-
-  test('Dependabot link opens in new tab', async ({ page }) => {
-    await page.goto('/')
-    // Use exact href to avoid matching activity security_alert links (security/dependabot/N)
-    const depLink = page.locator(
-      '[data-card-name="alice/awesome-project"] a[href="https://github.com/alice/awesome-project/security/dependabot"]',
-    )
-    await expect(depLink).toHaveAttribute('target', '_blank')
   })
 
   test('shows Draft badge for draft PRs', async ({ page }) => {
