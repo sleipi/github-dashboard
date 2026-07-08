@@ -4,11 +4,7 @@ import {
   aggregateCiStatus,
   ciColor,
   ciLabel,
-  depBgColor,
-  depColor,
   escapeHtml,
-  formatDepBadgeTrend,
-  formatDepLabel,
   formatRelative,
   freshAgeStyle,
 } from './formatters.ts'
@@ -38,7 +34,7 @@ function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel 
 }
 
 export function toCardViewModel(data: CardData, activities: readonly Activity[]): CardViewModel {
-  const { fullName, cache, prs, trend } = data
+  const { fullName, cache, prs, securityCounts } = data
   const [owner = '', name = ''] = fullName.split('/')
   const now = new Date()
 
@@ -47,20 +43,15 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   const ciStatuses = prs.map((p) => p.ciStatus) as CiStatus[]
   const overallCi = aggregateCiStatus(ciStatuses)
 
-  const prRows: PrRowViewModel[] = displayPrs.map((pr) => {
-    return {
-      number: pr.number,
-      title: pr.title,
-      draft: pr.draft,
-      ciColor: ciColor(pr.ciStatus),
-      ciLabel: ciLabel(pr.ciStatus),
-      prUrl: pr.prUrl,
-      highlightStyle: freshAgeStyle(pr.createdAt, now),
-    }
-  })
-
-  const dep = cache.dependabotCount ?? 0
-  const badgeTrend = formatDepBadgeTrend(trend)
+  const prRows: PrRowViewModel[] = displayPrs.map((pr) => ({
+    number: pr.number,
+    title: pr.title,
+    draft: pr.draft,
+    ciColor: ciColor(pr.ciStatus),
+    ciLabel: ciLabel(pr.ciStatus),
+    prUrl: pr.prUrl,
+    highlightStyle: freshAgeStyle(pr.createdAt, now),
+  }))
 
   const displayActivities = activities.slice(0, MAX_ACTIVITIES_ON_CARD)
   const activityMore = Math.max(0, activities.length - MAX_ACTIVITIES_ON_CARD)
@@ -70,17 +61,22 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     owner,
     name,
     repoUrl: `https://github.com/${fullName}`,
-    securityUrl: `https://github.com/${fullName}/security/dependabot`,
     lastCommit: formatRelative(cache.lastCommitAt),
     ciDotColor: overallCi ? ciColor(overallCi) : 'transparent',
     ciDotLabel: overallCi ? ciLabel(overallCi) : '',
     showCiDot: overallCi !== null,
-    depDisplay: dep === 0 ? '✓' : dep >= 100 ? '99+' : String(dep),
-    depColor: depColor(dep),
-    depBg: depBgColor(dep),
-    depLabel: formatDepLabel(dep, trend),
-    depBadgeTrend: badgeTrend,
-    hasDepBadgeTrend: badgeTrend.length > 0,
+    secCritical: securityCounts.critical,
+    secHigh: securityCounts.high,
+    secMedium: securityCounts.medium,
+    secLow: securityCounts.low,
+    secCriticalOverdue: securityCounts.overdueSeverities.has('critical'),
+    secHighOverdue: securityCounts.overdueSeverities.has('high'),
+    secMediumOverdue: securityCounts.overdueSeverities.has('medium'),
+    secLowOverdue: securityCounts.overdueSeverities.has('low'),
+    secScopeAvailable: cache.dependabotCount !== null,
+    secHasAlerts:
+      securityCounts.critical + securityCounts.high + securityCounts.medium + securityCounts.low >
+      0,
     activities: displayActivities.map((a) => toActivityItemViewModel(a, now)),
     hasActivities: displayActivities.length > 0,
     activityMore,
@@ -95,6 +91,31 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     loadingId: `ld-${fullName.replace(/[^a-z0-9]/gi, '-')}`,
     borderStyle: buildBorderStyle(cache.lastCommitAt),
   }
+}
+
+function renderSecurityBadge(vm: CardViewModel, safeOwner: string, safeName: string): string {
+  if (!vm.secScopeAvailable) {
+    return `<span style="color:#6e7681">🔒 —</span>`
+  }
+  if (!vm.secHasAlerts) {
+    return `<span style="color:#3fb950">🔒 ✓</span>`
+  }
+  const od = (flag: boolean) =>
+    flag ? `<span style="color:#f85149;font-weight:700"> (!)</span>` : ''
+  return `<button
+    hx-get="/api/security/${safeOwner}/${safeName}"
+    hx-target="#modal" hx-swap="innerHTML"
+    style="display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:11px;color:inherit"
+    title="View security alerts">
+    🔒
+    <span style="color:#f85149">Critical&nbsp;${vm.secCritical}${od(vm.secCriticalOverdue)}</span>
+    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
+    <span style="color:#d29922">High&nbsp;${vm.secHigh}${od(vm.secHighOverdue)}</span>
+    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
+    <span style="color:#d29922">Medium&nbsp;${vm.secMedium}${od(vm.secMediumOverdue)}</span>
+    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
+    <span style="color:#6e7681">Low&nbsp;${vm.secLow}${od(vm.secLowOverdue)}</span>
+  </button>`
 }
 
 export function renderCard(vm: CardViewModel): string {
@@ -133,13 +154,12 @@ export function renderCard(vm: CardViewModel): string {
             title="Remove">×</button>
   </div>
   <div class="card-body">
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:11px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
       <span style="color:#8b949e">⏱ ${vm.lastCommit}</span>
-      <a href="${vm.securityUrl}" target="_blank" rel="noopener noreferrer"
-         style="display:inline-flex;align-items:center;gap:3px;text-decoration:none;background:${vm.depBg};color:${vm.depColor};padding:2px 7px;border-radius:10px;font-size:11px;font-weight:500"
-         title="${vm.depLabel}">
-        🛡 ${vm.depDisplay}${vm.hasDepBadgeTrend ? ` <span style="font-size:10px;opacity:0.75">${vm.depBadgeTrend}</span>` : ''}
-      </a>
+      ${renderSecurityBadge(vm, safeOwner, safeName)}
+      <button hx-get="/api/settings/sla" hx-target="#modal" hx-swap="innerHTML"
+              style="background:transparent;border:none;cursor:pointer;color:#6e7681;padding:0;font-size:11px"
+              title="Configure security SLA thresholds">⚙</button>
     </div>
     ${
       vm.hasActivities

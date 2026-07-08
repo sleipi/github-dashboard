@@ -20,17 +20,20 @@ export type CardViewModel = {
   readonly owner: string
   readonly name: string
   readonly repoUrl: string
-  readonly securityUrl: string
   readonly lastCommit: string
   readonly ciDotColor: string
   readonly ciDotLabel: string
   readonly showCiDot: boolean
-  readonly depDisplay: string
-  readonly depColor: string
-  readonly depBg: string
-  readonly depLabel: string
-  readonly depBadgeTrend: string
-  readonly hasDepBadgeTrend: boolean
+  readonly secCritical: number
+  readonly secHigh: number
+  readonly secMedium: number
+  readonly secLow: number
+  readonly secCriticalOverdue: boolean
+  readonly secHighOverdue: boolean
+  readonly secMediumOverdue: boolean
+  readonly secLowOverdue: boolean
+  readonly secScopeAvailable: boolean
+  readonly secHasAlerts: boolean
   readonly activities: readonly ActivityItemViewModel[]
   readonly hasActivities: boolean
   readonly activityMore: number

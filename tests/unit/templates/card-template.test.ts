@@ -19,7 +19,13 @@ const emptyCardData = (fullName: string): CardData => ({
     cachedAt: new Date(),
   },
   prs: [],
-  trend: { week: null, month: null, sixMonths: null },
+  securityCounts: {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    overdueSeverities: new Set(),
+  },
 })
 
 describe('toCardViewModel', () => {
@@ -35,79 +41,59 @@ describe('toCardViewModel', () => {
     expect(vm.hasPrs).toBe(false)
   })
 
-  test('depDisplay shows checkmark when dependabotCount is 0', () => {
+  test('secHasAlerts is false when all severity counts are 0', () => {
     const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
-    expect(vm.depDisplay).toBe('✓')
+    expect(vm.secHasAlerts).toBe(false)
+    expect(vm.secCritical).toBe(0)
+    expect(vm.secHigh).toBe(0)
+    expect(vm.secMedium).toBe(0)
+    expect(vm.secLow).toBe(0)
   })
 
-  test('depDisplay shows exact number below 100', () => {
+  test('secHasAlerts is true when any severity count > 0', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 99 },
+      securityCounts: {
+        critical: 0,
+        high: 3,
+        medium: 0,
+        low: 0,
+        overdueSeverities: new Set(),
+      },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depDisplay).toBe('99')
+    expect(vm.secHasAlerts).toBe(true)
+    expect(vm.secHigh).toBe(3)
   })
 
-  test('depDisplay shows "99+" when dependabotCount is 100', () => {
+  test('secScopeAvailable is false when dependabotCount is null', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 100 },
+      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: null },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depDisplay).toBe('99+')
+    expect(vm.secScopeAvailable).toBe(false)
   })
 
-  test('depDisplay shows "99+" when dependabotCount exceeds 100', () => {
-    const data: CardData = {
-      ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 150 },
-    }
-    const vm = toCardViewModel(data, [])
-    expect(vm.depDisplay).toBe('99+')
-  })
-
-  test('depLabel shows "99+ open Dependabot alerts" when dependabotCount is >= 100', () => {
-    const data: CardData = {
-      ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 100 },
-    }
-    const vm = toCardViewModel(data, [])
-    expect(vm.depLabel).toBe('99+ open Dependabot alerts')
-  })
-
-  test('depBg is green for 0 dependabot alerts', () => {
+  test('secScopeAvailable is true when dependabotCount is 0', () => {
     const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
-    expect(vm.depBg).toBe('rgba(63,185,80,0.12)')
+    expect(vm.secScopeAvailable).toBe(true)
   })
 
-  test('hasDepBadgeTrend is false when trend is all null', () => {
-    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
-    expect(vm.hasDepBadgeTrend).toBe(false)
-    expect(vm.depBadgeTrend).toBe('')
-  })
-
-  test('depBadgeTrend propagates week to month and 6-month', () => {
+  test('secCriticalOverdue is true when critical is in overdueSeverities', () => {
     const data: CardData = {
       ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 5 },
-      trend: { week: -2, month: null, sixMonths: null },
+      securityCounts: {
+        critical: 1,
+        high: 0,
+        medium: 0,
+        low: 0,
+        overdueSeverities: new Set(['critical'] as const),
+      },
     }
     const vm = toCardViewModel(data, [])
-    expect(vm.depBadgeTrend).toBe('week -2 | month -2 | 6month -2')
-    expect(vm.hasDepBadgeTrend).toBe(true)
-  })
-
-  test('depLabel propagates week to month and 6-month in tooltip', () => {
-    const data: CardData = {
-      ...emptyCardData('alice/alpha'),
-      cache: { ...emptyCardData('alice/alpha').cache, dependabotCount: 3 },
-      trend: { week: 1, month: null, sixMonths: null },
-    }
-    const vm = toCardViewModel(data, [])
-    expect(vm.depLabel).toContain('+1 this week')
-    expect(vm.depLabel).toContain('+1 this month')
-    expect(vm.depLabel).toContain('+1 last 6 months')
+    expect(vm.secCriticalOverdue).toBe(true)
+    expect(vm.secHighOverdue).toBe(false)
   })
 
   test('borderStyle has grey border and no glow when lastCommitAt is null', () => {
@@ -312,14 +298,55 @@ describe('renderCard', () => {
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
 
-  test('shows security badge with "0" and green tooltip when dependabotCount is null (treated as 0)', () => {
+  test('shows green checkmark badge when secScopeAvailable and no alerts', () => {
+    const html = renderCard(toCardViewModel(emptyCardData('alice/no-alerts'), []))
+    expect(html).toContain('🔒 ✓')
+  })
+
+  test('shows dash badge when security scope not available', () => {
     const data: CardData = {
-      ...emptyCardData('alice/no-dep'),
-      cache: { ...emptyCardData('alice/no-dep').cache, dependabotCount: null },
+      ...emptyCardData('alice/no-scope'),
+      cache: { ...emptyCardData('alice/no-scope').cache, dependabotCount: null },
     }
     const html = renderCard(toCardViewModel(data, []))
-    expect(html).toContain('🛡')
-    expect(html).toContain('No Dependabot alerts')
+    expect(html).toContain('🔒 —')
+  })
+
+  test('shows HTMX security badge button when alerts present', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/with-alerts'),
+      securityCounts: {
+        critical: 2,
+        high: 0,
+        medium: 0,
+        low: 0,
+        overdueSeverities: new Set(),
+      },
+    }
+    const html = renderCard(toCardViewModel(data, []))
+    expect(html).toContain('hx-get="/api/security/alice/with-alerts"')
+    expect(html).toContain('Critical')
+    expect(html).toContain('2')
+  })
+
+  test('shows overdue indicator (!) when severity is overdue', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/overdue'),
+      securityCounts: {
+        critical: 1,
+        high: 0,
+        medium: 0,
+        low: 0,
+        overdueSeverities: new Set(['critical'] as const),
+      },
+    }
+    const html = renderCard(toCardViewModel(data, []))
+    expect(html).toContain('(!)')
+  })
+
+  test('gear icon links to SLA settings', () => {
+    const html = renderCard(toCardViewModel(emptyCardData('alice/alpha'), []))
+    expect(html).toContain('hx-get="/api/settings/sla"')
   })
 
   test('shows more-PRs button when more than MAX_PRS_ON_CARD exist', () => {
