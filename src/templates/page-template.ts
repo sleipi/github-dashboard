@@ -266,6 +266,9 @@ export function renderDashboard(vm: DashboardViewModel): string {
             hx-on::after-request="htmx.trigger(document.body,'cardsChanged')">
       Refresh
     </button>
+    <button class="btn-ghost"
+            hx-get="/api/settings/sla" hx-target="#modal" hx-swap="innerHTML"
+            title="Security SLA settings">⚙ SLA</button>
     <button class="btn-primary repo-add-btn"
             hx-get="/api/modal/repos" hx-target="#modal" hx-swap="innerHTML">
       + Add repo

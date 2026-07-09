@@ -298,9 +298,9 @@ describe('renderCard', () => {
     expect(html).toContain('hx-get="/api/card/alice/alpha"')
   })
 
-  test('shows green checkmark badge when secScopeAvailable and no alerts', () => {
+  test('shows green no-alerts badge when secScopeAvailable and no alerts', () => {
     const html = renderCard(toCardViewModel(emptyCardData('alice/no-alerts'), []))
-    expect(html).toContain('🔒 ✓')
+    expect(html).toContain('No Alerts ✓')
   })
 
   test('shows dash badge when security scope not available', () => {
@@ -309,7 +309,7 @@ describe('renderCard', () => {
       cache: { ...emptyCardData('alice/no-scope').cache, dependabotCount: null },
     }
     const html = renderCard(toCardViewModel(data, []))
-    expect(html).toContain('🔒 —')
+    expect(html).toContain('Security Alerts —')
   })
 
   test('shows HTMX security badge button when alerts present', () => {
@@ -329,7 +329,7 @@ describe('renderCard', () => {
     expect(html).toContain('2')
   })
 
-  test('shows overdue indicator (!) when severity is overdue', () => {
+  test('shows overdue warning icon when severity is overdue', () => {
     const data: CardData = {
       ...emptyCardData('alice/overdue'),
       securityCounts: {
@@ -341,12 +341,13 @@ describe('renderCard', () => {
       },
     }
     const html = renderCard(toCardViewModel(data, []))
-    expect(html).toContain('(!)')
+    expect(html).toContain('M6.457 1.047') // warning triangle SVG path
   })
 
   test('gear icon links to SLA settings', () => {
+    // SLA button lives in the global page header, not on individual cards
     const html = renderCard(toCardViewModel(emptyCardData('alice/alpha'), []))
-    expect(html).toContain('hx-get="/api/settings/sla"')
+    expect(html).not.toContain('hx-get="/api/settings/sla"')
   })
 
   test('shows more-PRs button when more than MAX_PRS_ON_CARD exist', () => {

@@ -94,28 +94,41 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
   }
 }
 
+const WARN_ICON =
+  `<svg width="10" height="10" viewBox="0 0 16 16" fill="#f85149" style="vertical-align:-1px;margin-left:3px">` +
+  `<path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918` +
+  `a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z"/>` +
+  '</svg>'
+
+const SEP = `<span style="color:#8b949e">&nbsp;·&nbsp;</span>`
+
 function renderSecurityBadge(vm: CardViewModel): string {
   if (!vm.secScopeAvailable) {
-    return `<span style="color:#6e7681">🔒 —</span>`
+    return `<span style="color:#6e7681;font-size:11px">Security Alerts —</span>`
   }
   if (!vm.secHasAlerts) {
-    return `<span style="color:#3fb950">🔒 ✓</span>`
+    return `<span style="font-size:11px;color:#6e7681">Security Alerts${SEP}<span style="color:#3fb950">No Alerts ✓</span></span>`
   }
-  const od = (flag: boolean) =>
-    flag ? `<span style="color:#f85149;font-weight:700"> (!)</span>` : ''
+  const od = (flag: boolean) => (flag ? WARN_ICON : '')
+  const parts: string[] = []
+  if (vm.secCritical > 0)
+    parts.push(
+      `<span style="color:#f85149">Critical&nbsp;${vm.secCritical}${od(vm.secCriticalOverdue)}</span>`,
+    )
+  if (vm.secHigh > 0)
+    parts.push(`<span style="color:#d29922">High&nbsp;${vm.secHigh}${od(vm.secHighOverdue)}</span>`)
+  if (vm.secMedium > 0)
+    parts.push(
+      `<span style="color:#d29922">Medium&nbsp;${vm.secMedium}${od(vm.secMediumOverdue)}</span>`,
+    )
+  if (vm.secLow > 0)
+    parts.push(`<span style="color:#6e7681">Low&nbsp;${vm.secLow}${od(vm.secLowOverdue)}</span>`)
   return `<button
     hx-get="${escapeHtml(vm.secHtmxPath)}"
     hx-target="#modal" hx-swap="innerHTML"
     style="display:inline-flex;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;font-size:11px;color:inherit"
     title="View security alerts">
-    🔒
-    <span style="color:#f85149">Critical&nbsp;${vm.secCritical}${od(vm.secCriticalOverdue)}</span>
-    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
-    <span style="color:#d29922">High&nbsp;${vm.secHigh}${od(vm.secHighOverdue)}</span>
-    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
-    <span style="color:#d29922">Medium&nbsp;${vm.secMedium}${od(vm.secMediumOverdue)}</span>
-    <span style="color:#8b949e">&nbsp;·&nbsp;</span>
-    <span style="color:#6e7681">Low&nbsp;${vm.secLow}${od(vm.secLowOverdue)}</span>
+    <span style="color:#6e7681">Security Alerts</span>${SEP}${parts.join(SEP)}
   </button>`
 }
 
@@ -142,6 +155,7 @@ export function renderCard(vm: CardViewModel): string {
           style="font-size:13px;font-weight:600">${safeName}</span>
       </a>
     </div>
+    <span style="font-size:10px;color:#484f58;margin-left:auto">${vm.lastCommit}</span>
     ${vm.showCiDot ? `<div class="ci-dot" style="background:${vm.ciDotColor}" title="${vm.ciDotLabel}"></div>` : ''}
     <button hx-get="/api/card/${safeOwner}/${safeName}"
             hx-target="closest .card" hx-swap="outerHTML"
@@ -155,12 +169,8 @@ export function renderCard(vm: CardViewModel): string {
             title="Remove">×</button>
   </div>
   <div class="card-body">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:11px;flex-wrap:wrap">
-      <span style="color:#8b949e">⏱ ${vm.lastCommit}</span>
+    <div style="margin-bottom:10px;font-size:11px">
       ${renderSecurityBadge(vm)}
-      <button hx-get="/api/settings/sla" hx-target="#modal" hx-swap="innerHTML"
-              style="background:transparent;border:none;cursor:pointer;color:#6e7681;padding:0;font-size:11px"
-              title="Configure security SLA thresholds">⚙</button>
     </div>
     ${
       vm.hasActivities
