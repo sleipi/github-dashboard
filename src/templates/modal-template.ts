@@ -55,7 +55,49 @@ export function renderRepoRow(vm: RepoListItemViewModel): string {
 </div>`
 }
 
-export function renderRepoModal(repos: GitHubRepo[], pinned: Set<string>): string {
+export function renderSearchScopeToggle(enabled: boolean): string {
+  const trackBg = enabled ? '#1f6feb' : '#30363d'
+  const knobLeft = enabled ? '18px' : '2px'
+  return `<button
+          id="global-search-toggle"
+          hx-post="/api/settings/global-search"
+          hx-include="#repo-search"
+          hx-target="#repo-search-scope-and-results"
+          hx-swap="outerHTML"
+          aria-pressed="${enabled}"
+          title="${enabled ? 'Global Search: On (all of GitHub)' : 'Global Search: Off (your repos + orgs)'}"
+          style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
+                 padding:0;cursor:pointer;font-family:inherit;font-size:11px;color:#8b949e">
+    <span>Global</span>
+    <span style="position:relative;width:34px;height:18px;border-radius:9px;flex-shrink:0;
+                 background:${trackBg};transition:background .15s">
+      <span style="position:absolute;top:2px;left:${knobLeft};width:14px;height:14px;
+                   border-radius:50%;background:#fff;transition:left .15s"></span>
+    </span>
+  </button>`
+}
+
+export function renderSearchScopeAndResults(
+  scopeLabel: string,
+  enabled: boolean,
+  resultsHtml: string,
+): string {
+  return `<div id="repo-search-scope-and-results">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:0 16px 8px;font-size:11px;color:#6e7681">
+      <span>${escapeHtml(scopeLabel)}</span>
+      ${renderSearchScopeToggle(enabled)}
+    </div>
+    <div id="repo-list" style="overflow-y:auto;flex:1">${resultsHtml}</div>
+  </div>`
+}
+
+export function renderRepoModal(
+  repos: GitHubRepo[],
+  pinned: Set<string>,
+  scopeLabel: string,
+  globalSearchEnabled: boolean,
+): string {
   const items = repos.map((r) => toRepoListItem(r, pinned.has(r.fullName)))
   return `
 <div class="modal-overlay" onclick="if(event.target===this)document.getElementById('modal').innerHTML=''">
@@ -74,9 +116,7 @@ export function renderRepoModal(repos: GitHubRepo[], pinned: Set<string>): strin
              style="width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;
                     padding:7px 11px;color:#e6edf3;font-size:13px;outline:none"/>
     </div>
-    <div id="repo-list" style="overflow-y:auto;flex:1">
-      ${items.map(renderRepoRow).join('')}
-    </div>
+    ${renderSearchScopeAndResults(scopeLabel, globalSearchEnabled, items.map(renderRepoRow).join(''))}
   </div>
 </div>`
 }

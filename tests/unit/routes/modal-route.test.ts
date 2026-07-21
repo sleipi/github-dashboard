@@ -39,7 +39,7 @@ describe('modal routes', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient(), repos.auth)
 
     const url = new URL('http://localhost:4242/api/modal/repos')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -61,7 +61,7 @@ describe('modal routes', () => {
     const repos = createSqliteRepos(dbPath)
     repos.cards.pin('alice/alpha')
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient(), repos.auth)
 
     const url = new URL('http://localhost:4242/api/modal/repos')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -79,7 +79,7 @@ describe('modal routes', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
     const repos = createSqliteRepos(dbPath)
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient(), repos.auth)
 
     const otherUrl = new URL('http://localhost:4242/api/modal/other')
     expect(routes.some((r) => r.match(otherUrl, 'GET'))).toBe(false)
@@ -95,7 +95,7 @@ describe('modal routes', () => {
     const repos = createSqliteRepos(dbPath)
     const searchRepos = mock(async () => [makeRepo('jtl-software/old-archive')])
     const service = createCardService(repos, makeClient())
-    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }))
+    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }), repos.auth)
 
     const url = new URL('http://localhost:4242/api/repos/search?q=old')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -117,7 +117,7 @@ describe('modal routes', () => {
     const getRepos = mock(async () => [makeRepo('alice/alpha')])
     const searchRepos = mock(async () => [])
     const service = createCardService(repos, makeClient({ getRepos }))
-    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }))
+    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }), repos.auth)
 
     const url = new URL('http://localhost:4242/api/repos/search?q=a')
     const route = routes.find((r) => r.match(url, 'GET'))
@@ -143,7 +143,7 @@ describe('modal routes', () => {
         throw new Error('rate limited')
       }),
     }
-    const routes = createModalRoutes(service, repos.cards, throwingClient)
+    const routes = createModalRoutes(service, repos.cards, throwingClient, repos.auth)
     const url = new URL('http://localhost:4242/api/repos/search?q=ab')
     const route = routes.find((r) => r.match(url, 'GET'))
     if (!route) throw new Error('route not found')
@@ -151,6 +151,171 @@ describe('modal routes', () => {
     expect(res.status).toBe(200)
     const body = await res.text()
     expect(body).toBe('')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/modal/repos renders scope label with username and orgs when global search is off', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    const getUserOrgs = mock(async () => ['jtl-software'])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient({ getUserOrgs }), repos.auth)
+
+    const url = new URL('http://localhost:4242/api/modal/repos')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    expect(body).toContain('searching in alice / jtl-software')
+    expect(body).toContain('aria-pressed="false"')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/modal/repos renders global scope label when global search is on', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    repos.globalSearch.setEnabled(true)
+    const getUserOrgs = mock(async () => ['jtl-software'])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient({ getUserOrgs }), repos.auth)
+
+    const url = new URL('http://localhost:4242/api/modal/repos')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    expect(body).toContain('searching all of GitHub')
+    expect(body).toContain('aria-pressed="true"')
+    expect(getUserOrgs).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/repos/search scopes the query to user + orgs by default', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    const getUserOrgs = mock(async () => ['jtl-software'])
+    const searchRepos = mock(async () => [])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(
+      service,
+      repos.cards,
+      makeClient({ getUserOrgs, searchRepos }),
+      repos.auth,
+    )
+
+    const url = new URL('http://localhost:4242/api/repos/search?q=old')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(searchRepos).toHaveBeenCalledWith('old user:alice org:jtl-software')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/repos/search sends the raw query when global search is enabled', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    repos.globalSearch.setEnabled(true)
+    const getUserOrgs = mock(async () => ['jtl-software'])
+    const searchRepos = mock(async () => [])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(
+      service,
+      repos.cards,
+      makeClient({ getUserOrgs, searchRepos }),
+      repos.auth,
+    )
+
+    const url = new URL('http://localhost:4242/api/repos/search?q=old')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(searchRepos).toHaveBeenCalledWith('old')
+    expect(getUserOrgs).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/repos/search falls back to user-only scope when org fetch fails', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    const getUserOrgs = mock(async () => {
+      throw new Error('missing read:org scope')
+    })
+    const searchRepos = mock(async () => [])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(
+      service,
+      repos.cards,
+      makeClient({ getUserOrgs, searchRepos }),
+      repos.auth,
+    )
+
+    const url = new URL('http://localhost:4242/api/repos/search?q=old')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    await route.handle(new Request(url.href), url)
+
+    expect(searchRepos).toHaveBeenCalledWith('old user:alice')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/global-search flips the setting and re-renders scope + results', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient(), repos.auth)
+
+    const url = new URL('http://localhost:4242/api/settings/global-search')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const body = await res.text()
+
+    expect(repos.globalSearch.isEnabled()).toBe(true)
+    expect(body).toContain('searching all of GitHub')
+    expect(body).toContain('aria-pressed="true"')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/global-search rebuilds results using the included q value', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-modal-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    const searchRepos = mock(async () => [makeRepo('jtl-software/global-hit')])
+    const service = createCardService(repos, makeClient())
+    const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }), repos.auth)
+
+    const url = new URL('http://localhost:4242/api/settings/global-search?q=hit')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const body = await res.text()
+
+    expect(searchRepos).toHaveBeenCalledWith('hit')
+    expect(body).toContain('jtl-software/global-hit')
 
     repos.close()
     cleanupTempDir(dir)

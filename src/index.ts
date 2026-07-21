@@ -26,7 +26,7 @@ const routes: RouteHandler[] = [
   ...createAuthRoutes(repos.auth, client),
   ...createCardRoutes(cardService, activityService, repos.auth, client),
   ...createActivityRoutes(activityService, repos.auth),
-  ...createModalRoutes(cardService, repos.cards, client),
+  ...createModalRoutes(cardService, repos.cards, client, repos.auth),
   ...createSecurityRoutes(repos.security, repos.sla),
   ...createPrRoutes(repos.pullRequests),
 ]

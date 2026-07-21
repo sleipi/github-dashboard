@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import type { GitHubRepo } from '../../../src/github/github-client.ts'
-import { renderRepoModal, toRepoListItem } from '../../../src/templates/modal-template.ts'
+import {
+  renderRepoModal,
+  renderSearchScopeAndResults,
+  renderSearchScopeToggle,
+  toRepoListItem,
+} from '../../../src/templates/modal-template.ts'
 
 const makeRepo = (fullName: string, opts: Partial<GitHubRepo> = {}): GitHubRepo => {
   const [owner, name] = fullName.split('/') as [string, string]
@@ -39,62 +44,115 @@ describe('renderRepoModal', () => {
   const pinnedRepo = makeRepo('alice/bar')
 
   test('pinned repo has data-checked="1"', () => {
-    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
+    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']), 'searching in alice', false)
     expect(html).toContain('data-checked="1"')
   })
 
   test('unpinned repo has data-checked="0"', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).toContain('data-checked="0"')
   })
 
   test('pinned repo contains SVG checkmark', () => {
-    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
+    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']), 'searching in alice', false)
     expect(html).toContain('<svg')
     expect(html).toContain('stroke="white"')
   })
 
   test('unpinned repo contains no SVG checkmark', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).not.toContain('<svg')
   })
 
   test('pinned repo has green background on check div', () => {
-    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']))
+    const html = renderRepoModal([pinnedRepo], new Set(['alice/bar']), 'searching in alice', false)
     expect(html).toContain('background:#238636')
   })
 
   test('unpinned repo has transparent background on check div', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).toContain('background:transparent')
   })
 
   test('repo name appears in HTML', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).toContain('alice/foo')
   })
 
   test('onclick calls _toggleCheck', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).toContain('_toggleCheck(this)')
   })
 
   test('search field is present', () => {
-    const html = renderRepoModal([repo], new Set())
+    const html = renderRepoModal([repo], new Set(), 'searching in alice', false)
     expect(html).toContain('id="repo-search"')
   })
 
   test('private repo shows Private badge', () => {
     const privateRepo = makeRepo('alice/secret', { isPrivate: true })
-    const html = renderRepoModal([privateRepo], new Set())
+    const html = renderRepoModal([privateRepo], new Set(), 'searching in alice', false)
     expect(html).toContain('Private')
   })
 
   test('renders all repos without a cap', () => {
     const repos = Array.from({ length: 150 }, (_, i) => makeRepo(`alice/repo-${i}`))
-    const html = renderRepoModal(repos, new Set())
+    const html = renderRepoModal(repos, new Set(), 'searching in alice', false)
     const matches = html.match(/data-repo-name=/g) ?? []
     expect(matches.length).toBe(150)
+  })
+
+  test('shows the scope label and toggle', () => {
+    const html = renderRepoModal([repo], new Set(), 'searching in alice / jtl-software', false)
+    expect(html).toContain('searching in alice / jtl-software')
+    expect(html).toContain('id="global-search-toggle"')
+  })
+})
+
+describe('renderSearchScopeToggle', () => {
+  test('shows blue track and knob at right when enabled', () => {
+    const html = renderSearchScopeToggle(true)
+    expect(html).toContain('background:#1f6feb')
+    expect(html).toContain('left:18px')
+    expect(html).toContain('aria-pressed="true"')
+  })
+
+  test('shows grey track and knob at left when disabled', () => {
+    const html = renderSearchScopeToggle(false)
+    expect(html).toContain('background:#30363d')
+    expect(html).toContain('left:2px')
+    expect(html).toContain('aria-pressed="false"')
+  })
+
+  test('posts to /api/settings/global-search including the search input', () => {
+    const html = renderSearchScopeToggle(false)
+    expect(html).toContain('hx-post="/api/settings/global-search"')
+    expect(html).toContain('hx-include="#repo-search"')
+    expect(html).toContain('hx-target="#repo-search-scope-and-results"')
+  })
+})
+
+describe('renderSearchScopeAndResults', () => {
+  test('includes the scope label text', () => {
+    const html = renderSearchScopeAndResults('searching in alice / jtl-software', false, '')
+    expect(html).toContain('searching in alice / jtl-software')
+  })
+
+  test('escapes HTML in the scope label', () => {
+    const html = renderSearchScopeAndResults('<script>alert(1)</script>', false, '')
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('&lt;script&gt;')
+  })
+
+  test('includes the results HTML inside #repo-list', () => {
+    const html = renderSearchScopeAndResults('searching your repos', false, '<div>row</div>')
+    expect(html).toContain('id="repo-list"')
+    expect(html).toContain('<div>row</div>')
+  })
+
+  test('wraps everything in #repo-search-scope-and-results', () => {
+    const html = renderSearchScopeAndResults('searching your repos', false, '')
+    expect(html).toContain('id="repo-search-scope-and-results"')
   })
 })
 
