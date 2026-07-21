@@ -45,6 +45,7 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
       repos.cards.pin('alice/another-repo')
       repos.cards.reorder(['alice/awesome-project', 'alice/another-repo'])
       repos.autoSort.setEnabled(false)
+      repos.globalSearch.setEnabled(false)
       for (const fullName of ['alice/awesome-project', 'alice/another-repo']) {
         const c = repos.pullRequests.getCache(fullName)
         if (c)

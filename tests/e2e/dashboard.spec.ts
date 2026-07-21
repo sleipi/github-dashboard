@@ -634,6 +634,30 @@ test.describe('Auto Sort', () => {
   })
 })
 
+test.describe('Global Search Toggle', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+  })
+
+  test('opening the repo modal shows the toggle off with a scoped label, and toggling flips it on', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: /add repo/i }).click()
+
+    const toggle = page.locator('#global-search-toggle')
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('#repo-search-scope-and-results')).toContainText('searching in')
+
+    await toggle.click()
+
+    await expect(page.locator('#global-search-toggle')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#repo-search-scope-and-results')).toContainText(
+      'searching all of GitHub',
+    )
+  })
+})
+
 test.describe('security badge', () => {
   test.beforeEach(async ({ page }) => {
     await page.request.post('/api/test/restore-session')
