@@ -87,11 +87,12 @@ export function createModalRoutes(
     },
     {
       match: (url, method) => url.pathname === '/api/settings/global-search' && method === 'POST',
-      async handle(_req, url) {
+      async handle(req, _url) {
         const newState = !cardService.isGlobalSearchEnabled()
         cardService.setGlobalSearchEnabled(newState)
 
-        const q = url.searchParams.get('q')?.trim() ?? ''
+        const form = await req.formData()
+        const q = ((form.get('q') as string) ?? '').trim()
         const pinned = new Set(cardRepo.getPinned().map((r) => r.fullName))
         const username = authRepo.getToken()?.username ?? ''
         const orgs = newState ? [] : await getOrgLogins(client)

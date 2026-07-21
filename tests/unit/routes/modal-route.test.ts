@@ -289,7 +289,15 @@ describe('modal routes', () => {
     const url = new URL('http://localhost:4242/api/settings/global-search')
     const route = routes.find((r) => r.match(url, 'POST'))
     if (!route) throw new Error('route not found')
-    const res = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const form = new URLSearchParams({ q: '' })
+    const res = await route.handle(
+      new Request(url.href, {
+        method: 'POST',
+        body: form,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+      url,
+    )
     const body = await res.text()
 
     expect(repos.globalSearch.isEnabled()).toBe(true)
@@ -308,10 +316,18 @@ describe('modal routes', () => {
     const service = createCardService(repos, makeClient())
     const routes = createModalRoutes(service, repos.cards, makeClient({ searchRepos }), repos.auth)
 
-    const url = new URL('http://localhost:4242/api/settings/global-search?q=hit')
+    const url = new URL('http://localhost:4242/api/settings/global-search')
     const route = routes.find((r) => r.match(url, 'POST'))
     if (!route) throw new Error('route not found')
-    const res = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const form = new URLSearchParams({ q: 'hit' })
+    const res = await route.handle(
+      new Request(url.href, {
+        method: 'POST',
+        body: form,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+      url,
+    )
     const body = await res.text()
 
     expect(searchRepos).toHaveBeenCalledWith('hit')
