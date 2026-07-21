@@ -435,4 +435,20 @@ describe('CardService auto-sort', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('isGlobalSearchEnabled defaults to false and setGlobalSearchEnabled toggles + persists', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+
+    expect(service.isGlobalSearchEnabled()).toBe(false)
+
+    service.setGlobalSearchEnabled(true)
+
+    expect(service.isGlobalSearchEnabled()).toBe(true)
+    expect(repos.globalSearch.isEnabled()).toBe(true)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

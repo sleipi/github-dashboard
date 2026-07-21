@@ -7,6 +7,7 @@ import { createSqlitePrRepo } from './pull-requests/sqlite-pr-repo.ts'
 import type { Repos } from './repos.ts'
 import { createSqliteSecurityAlertsRepo } from './security/sqlite-security-alerts-repo.ts'
 import { createSqliteAutoSortRepo } from './settings/sqlite-auto-sort-repo.ts'
+import { createSqliteGlobalSearchRepo } from './settings/sqlite-global-search-repo.ts'
 import { createSqliteSlaRepo } from './sla/sqlite-sla-repo.ts'
 
 export function createSqliteRepos(dbPath: string): Repos {
@@ -21,6 +22,7 @@ export function createSqliteRepos(dbPath: string): Repos {
     security: createSqliteSecurityAlertsRepo(db),
     sla: createSqliteSlaRepo(db),
     autoSort: createSqliteAutoSortRepo(db),
+    globalSearch: createSqliteGlobalSearchRepo(db),
     close() {
       db.close()
     },
