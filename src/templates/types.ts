@@ -48,6 +48,7 @@ export type CardViewModel = {
   readonly prMoreLabel: string
   readonly loadingId: string
   readonly borderStyle: string
+  readonly mostRecentActivityAt: number | null
 }
 
 export type RepoListItemViewModel = {
@@ -114,4 +115,5 @@ export type DashboardViewModel = {
   readonly username: string
   readonly avatarUrl: string | null
   readonly expiry: ExpiryBannerViewModel | null
+  readonly autoSortEnabled: boolean
 }

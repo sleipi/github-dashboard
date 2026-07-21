@@ -163,12 +163,32 @@ function daysUntilExpiry(d: Date): number {
   return Math.ceil((d.getTime() - Date.now()) / 86_400_000)
 }
 
+export function renderAutoSortToggle(enabled: boolean): string {
+  const trackBg = enabled ? '#1f6feb' : '#30363d'
+  const knobLeft = enabled ? '18px' : '2px'
+  return `<button
+          id="auto-sort-toggle"
+          hx-post="/api/settings/auto-sort" hx-target="this" hx-swap="outerHTML"
+          aria-pressed="${enabled}"
+          title="${enabled ? 'Auto Sort: On (sorted by recent activity)' : 'Auto Sort: Off (pinned order)'}"
+          style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;
+                 padding:0;cursor:pointer;font-family:inherit;font-size:12px;color:#8b949e">
+    <span>Auto Sort</span>
+    <span style="position:relative;width:34px;height:18px;border-radius:9px;flex-shrink:0;
+                 background:${trackBg};transition:background .15s">
+      <span style="position:absolute;top:2px;left:${knobLeft};width:14px;height:14px;
+                   border-radius:50%;background:#fff;transition:left .15s"></span>
+    </span>
+  </button>`
+}
+
 export function toDashboardViewModel(
   cardsHtml: string,
   username: string,
   avatarUrl: string,
   expiresAt: Date | null,
   severity: PatExpirySeverity | null,
+  autoSortEnabled: boolean,
 ): DashboardViewModel {
   let expiry: ExpiryBannerViewModel | null = null
   if (expiresAt !== null && severity !== null) {
@@ -190,6 +210,7 @@ export function toDashboardViewModel(
     username,
     avatarUrl: avatarUrl || null,
     expiry,
+    autoSortEnabled,
   }
 }
 
@@ -261,6 +282,7 @@ export function renderDashboard(vm: DashboardViewModel): string {
     <span style="font-size:15px;font-weight:600">Dashboard</span>
     <span id="refresh-info" style="font-size:11px;color:#6e7681"></span>
     <div style="flex:1"></div>
+    ${renderAutoSortToggle(vm.autoSortEnabled)}
     <button class="btn-ghost"
             hx-get="/api/cards" hx-target="#cards" hx-swap="morph:innerHTML"
             hx-on::after-request="htmx.trigger(document.body,'cardsChanged')">

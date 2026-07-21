@@ -7,9 +7,14 @@ import {
   renderCard,
   renderCardError,
   renderCards,
+  sortCardsByActivity,
   toCardViewModel,
 } from '../templates/card-template.ts'
-import { renderDashboard, toDashboardViewModel } from '../templates/page-template.ts'
+import {
+  renderAutoSortToggle,
+  renderDashboard,
+  toDashboardViewModel,
+} from '../templates/page-template.ts'
 import { html, htmlWithTrigger, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
 
@@ -21,6 +26,13 @@ async function buildCardVm(
   const syncResult = await activityService.sync(fullName)
   const cardData = await cardService.getCard(fullName, syncResult.refreshNeeded)
   return toCardViewModel(cardData, syncResult.activities)
+}
+
+function orderVms(
+  vms: ReturnType<typeof toCardViewModel>[],
+  autoSortEnabled: boolean,
+): ReturnType<typeof toCardViewModel>[] {
+  return autoSortEnabled ? sortCardsByActivity(vms) : vms
 }
 
 export function createCardRoutes(
@@ -63,17 +75,20 @@ export function createCardRoutes(
               r.status === 'fulfilled',
           )
           .map((r) => r.value)
+        const autoSortEnabled = cardService.isAutoSortEnabled()
+        const orderedVms = orderVms(vms, autoSortEnabled)
 
         const severity =
           token.expiresAt instanceof Date ? getPatExpirySeverity(token.expiresAt, new Date()) : null
         return html(
           renderDashboard(
             toDashboardViewModel(
-              renderCards(vms),
+              renderCards(orderedVms),
               token.username,
               token.avatarUrl,
               token.expiresAt instanceof Date ? token.expiresAt : null,
               severity,
+              autoSortEnabled,
             ),
           ),
         )
@@ -93,12 +108,13 @@ export function createCardRoutes(
               r.status === 'fulfilled',
           )
           .map((r) => r.value)
+        const orderedVms = orderVms(vms, cardService.isAutoSortEnabled())
 
         const rawTs = req.headers.get('X-Last-Seen-Event-At')
         const sinceMs = rawTs !== null ? Number(rawTs) : 0
         const since = new Date(Number.isFinite(sinceMs) ? sinceMs : 0)
         const newCount = activityService.countNewSince(since)
-        const cardsHtml = renderCards(vms)
+        const cardsHtml = renderCards(orderedVms)
 
         return newCount > 0
           ? htmlWithTrigger(cardsHtml, { newEvents: { count: newCount } })
@@ -142,6 +158,15 @@ export function createCardRoutes(
         const body = (await req.json()) as { order: string[] }
         cardService.reorder(body.order)
         return htmxTrigger('', 'cardsChanged')
+      },
+    },
+    // POST /api/settings/auto-sort — toggle auto-sort display mode
+    {
+      match: (url, method) => url.pathname === '/api/settings/auto-sort' && method === 'POST',
+      handle() {
+        const newState = !cardService.isAutoSortEnabled()
+        cardService.setAutoSort(newState)
+        return htmxTrigger(renderAutoSortToggle(newState), 'cardsChanged')
       },
     },
   ]

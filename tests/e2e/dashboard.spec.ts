@@ -577,6 +577,63 @@ test.describe('Dashboard', () => {
   })
 })
 
+test.describe('Auto Sort', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+  })
+
+  test('toggling sorts cards by recent activity and reverts to pinned order when off', async ({
+    page,
+  }) => {
+    await page.goto('/')
+
+    const toggle = page.locator('#auto-sort-toggle')
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    // Off: pinned order — awesome-project first, another-repo second
+    const cardsOff = page.locator('[data-card-name]')
+    await expect(cardsOff.nth(0)).toHaveAttribute('data-card-name', 'alice/awesome-project')
+    await expect(cardsOff.nth(1)).toHaveAttribute('data-card-name', 'alice/another-repo')
+
+    const cardsRefreshPromise = page.waitForResponse(
+      (r) => r.url().includes('/api/cards') && !r.url().includes('reorder') && r.status() === 200,
+    )
+    await toggle.click()
+    await cardsRefreshPromise
+
+    // On: activity-recency order — another-repo (more recent commit) first
+    await expect(page.locator('#auto-sort-toggle')).toHaveAttribute('aria-pressed', 'true')
+    const cardsOn = page.locator('[data-card-name]')
+    await expect(cardsOn.nth(0)).toHaveAttribute('data-card-name', 'alice/another-repo')
+    await expect(cardsOn.nth(1)).toHaveAttribute('data-card-name', 'alice/awesome-project')
+
+    // Persists across reload
+    await page.reload()
+    await expect(page.locator('#auto-sort-toggle')).toHaveAttribute('aria-pressed', 'true')
+    const cardsAfterReload = page.locator('[data-card-name]')
+    await expect(cardsAfterReload.nth(0)).toHaveAttribute('data-card-name', 'alice/another-repo')
+
+    // Toggle back off
+    const secondRefreshPromise = page.waitForResponse(
+      (r) => r.url().includes('/api/cards') && !r.url().includes('reorder') && r.status() === 200,
+    )
+    await page.locator('#auto-sort-toggle').click()
+    await secondRefreshPromise
+
+    await expect(page.locator('#auto-sort-toggle')).toHaveAttribute('aria-pressed', 'false')
+    const cardsBackOff = page.locator('[data-card-name]')
+    await expect(cardsBackOff.nth(0)).toHaveAttribute('data-card-name', 'alice/awesome-project')
+
+    // Reverted-off state persists across reload too
+    await page.reload()
+    await expect(page.locator('#auto-sort-toggle')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.locator('[data-card-name]').nth(0)).toHaveAttribute(
+      'data-card-name',
+      'alice/awesome-project',
+    )
+  })
+})
+
 test.describe('security badge', () => {
   test.beforeEach(async ({ page }) => {
     await page.request.post('/api/test/restore-session')
@@ -598,14 +655,14 @@ test.describe('security badge', () => {
   }) => {
     const card = page.locator('.card').first()
     const badgeHtml = await card.locator('button[hx-get*="/api/security"]').innerHTML()
-    // Critical 10d old > 7d SLA → (!) expected
-    // Medium 100d old > 90d SLA → (!) expected
-    // The (!) spans are only inside the overdue severity spans
+    // Critical 10d old > 7d SLA → overdue warning icon expected
+    // Medium 100d old > 90d SLA → overdue warning icon expected
+    // The warning icon SVG is only present inside the overdue severity spans
     const criticalSpan = card
       .locator('button[hx-get*="/api/security"] span')
       .filter({ hasText: 'Critical' })
-    await expect(criticalSpan).toContainText('(!)')
-    expect(badgeHtml).toContain('(!)')
+    await expect(criticalSpan.locator('svg')).toBeVisible()
+    expect(badgeHtml).toContain('<svg')
   })
 
   test('opens security modal on badge click', async ({ page }) => {
@@ -628,8 +685,8 @@ test.describe('security badge', () => {
   })
 
   test('opens SLA settings modal on gear icon click', async ({ page }) => {
-    const card = page.locator('.card').first()
-    await card.locator('button[hx-get="/api/settings/sla"]').click()
+    // SLA settings are global (header button), not per-card
+    await page.locator('button[hx-get="/api/settings/sla"]').click()
     await page.waitForSelector('#modal form')
     const modal = page.locator('#modal')
     await expect(modal).toContainText('Security SLA Settings')

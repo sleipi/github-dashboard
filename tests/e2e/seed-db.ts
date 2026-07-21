@@ -224,9 +224,12 @@ export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): 
     dependabotCachedAt: new Date(),
   })
 
-  // Repo-Cache für another-repo (keine PRs)
+  // Repo-Cache für another-repo (keine PRs). Commit is more recent than
+  // awesome-project's most recent activity, so the two repos disagree on
+  // pinned order (awesome-project first) vs. activity-recency order
+  // (another-repo first) — used by the Auto Sort e2e test.
   repos.pullRequests.upsertCache('alice/another-repo', {
-    lastCommitAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    lastCommitAt: new Date(Date.now() - 5 * 60 * 1000),
     prTotal: 0,
     dependabotCount: 0,
   })

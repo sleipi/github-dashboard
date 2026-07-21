@@ -9,8 +9,8 @@ const makeActivity = (overrides: Partial<Omit<Activity, 'id'>> = {}): Omit<Activ
   actor: '@bob',
   subject: 'merged #42 — Fix login bug',
   linkUrl: 'https://github.com/alice/alpha/pull/42',
-  occurredAt: new Date('2026-06-20T10:00:00Z'),
-  recordedAt: new Date('2026-06-20T10:01:00Z'),
+  occurredAt: new Date(Date.now() - 60_000),
+  recordedAt: new Date(Date.now() - 30_000),
   githubEventId: 'evt_001',
   ...overrides,
 })
@@ -172,20 +172,20 @@ describe('ActivityRepo', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-')
     cleanup.push(dir)
     const repos = createSqliteRepos(dbPath)
-    const cutoff = new Date('2026-06-23T10:00:00Z')
+    const cutoff = new Date(Date.now() - 60_000)
 
     repos.activity.upsertActivities('alice/alpha', [
       makeActivity({
-        recordedAt: new Date('2026-06-23T09:59:00Z'),
+        recordedAt: new Date(cutoff.getTime() - 60_000),
         githubEventId: 'before',
       }),
       makeActivity({
-        recordedAt: new Date('2026-06-23T10:01:00Z'),
+        recordedAt: new Date(cutoff.getTime() + 60_000),
         githubEventId: 'after1',
       }),
       makeActivity({
         repoFullName: 'alice/beta',
-        recordedAt: new Date('2026-06-23T10:02:00Z'),
+        recordedAt: new Date(cutoff.getTime() + 120_000),
         githubEventId: 'after2',
       }),
     ])
@@ -199,7 +199,7 @@ describe('ActivityRepo', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-')
     cleanup.push(dir)
     const repos = createSqliteRepos(dbPath)
-    const cutoff = new Date('2026-06-23T10:00:00Z')
+    const cutoff = new Date(Date.now() - 60_000)
 
     repos.activity.upsertActivities('alice/alpha', [
       makeActivity({
@@ -219,8 +219,8 @@ describe('ActivityRepo', () => {
     const repos = createSqliteRepos(dbPath)
 
     repos.activity.upsertActivities('alice/alpha', [
-      makeActivity({ occurredAt: new Date('2026-06-20T08:00:00Z'), githubEventId: 'a' }),
-      makeActivity({ occurredAt: new Date('2026-06-20T10:00:00Z'), githubEventId: 'b' }),
+      makeActivity({ occurredAt: new Date(Date.now() - 2 * 3_600_000), githubEventId: 'a' }),
+      makeActivity({ occurredAt: new Date(Date.now() - 3_600_000), githubEventId: 'b' }),
     ])
 
     const rows = repos.activity.getActivities('alice/alpha')

@@ -3,6 +3,7 @@ import type { AuthRepo } from './auth/auth-repo.ts'
 import type { CardRepo } from './cards/card-repo.ts'
 import type { PrRepo } from './pull-requests/pr-repo.ts'
 import type { SecurityAlertsRepo } from './security/security-alerts-repo.ts'
+import type { AutoSortRepo } from './settings/auto-sort-repo.ts'
 import type { SlaRepo } from './sla/sla-repo.ts'
 
 export interface Repos {
@@ -12,5 +13,6 @@ export interface Repos {
   readonly activity: ActivityRepo
   readonly security: SecurityAlertsRepo
   readonly sla: SlaRepo
+  readonly autoSort: AutoSortRepo
   close(): void
 }
