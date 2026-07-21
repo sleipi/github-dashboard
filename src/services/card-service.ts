@@ -28,6 +28,8 @@ export type CardService = {
   reorder(fullNames: string[]): void
   isAutoSortEnabled(): boolean
   setAutoSort(enabled: boolean): void
+  isGlobalSearchEnabled(): boolean
+  setGlobalSearchEnabled(enabled: boolean): void
 }
 
 export function computeMostRecentActivity(
@@ -160,6 +162,14 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
 
     setAutoSort(enabled) {
       repos.autoSort.setEnabled(enabled)
+    },
+
+    isGlobalSearchEnabled() {
+      return repos.globalSearch.isEnabled()
+    },
+
+    setGlobalSearchEnabled(enabled) {
+      repos.globalSearch.setEnabled(enabled)
     },
   }
 }

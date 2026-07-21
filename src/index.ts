@@ -26,7 +26,7 @@ const routes: RouteHandler[] = [
   ...createAuthRoutes(repos.auth, client),
   ...createCardRoutes(cardService, activityService, repos.auth, client),
   ...createActivityRoutes(activityService, repos.auth),
-  ...createModalRoutes(cardService, repos.cards, client),
+  ...createModalRoutes(cardService, repos.cards, client, repos.auth),
   ...createSecurityRoutes(repos.security, repos.sla),
   ...createPrRoutes(repos.pullRequests),
 ]
@@ -45,6 +45,7 @@ if (process.env.PLAYWRIGHT_TEST === '1') {
       repos.cards.pin('alice/another-repo')
       repos.cards.reorder(['alice/awesome-project', 'alice/another-repo'])
       repos.autoSort.setEnabled(false)
+      repos.globalSearch.setEnabled(false)
       for (const fullName of ['alice/awesome-project', 'alice/another-repo']) {
         const c = repos.pullRequests.getCache(fullName)
         if (c)

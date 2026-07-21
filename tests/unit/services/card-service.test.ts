@@ -41,6 +41,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getUser: mock(async () => ({ login: 'alice', avatarUrl: '', expiresAt: null })),
     getRepos: mock(async () => []),
     searchRepos: mock(async () => []),
+    getUserOrgs: mock(async () => []),
     getPrs: mock(async () => []),
     getLastCommitDate: mock(async () => null),
     getCiStatus: mock(async () => 'unknown' as const),
@@ -430,6 +431,22 @@ describe('CardService auto-sort', () => {
 
     expect(service.isAutoSortEnabled()).toBe(true)
     expect(repos.autoSort.isEnabled()).toBe(true)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('isGlobalSearchEnabled defaults to false and setGlobalSearchEnabled toggles + persists', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+
+    expect(service.isGlobalSearchEnabled()).toBe(false)
+
+    service.setGlobalSearchEnabled(true)
+
+    expect(service.isGlobalSearchEnabled()).toBe(true)
+    expect(repos.globalSearch.isEnabled()).toBe(true)
 
     repos.close()
     cleanupTempDir(dir)

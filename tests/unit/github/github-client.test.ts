@@ -282,6 +282,37 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
+  test('getUserOrgs maps GitHub org list to logins', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = makeJsonFetch({
+      '/user/orgs': [{ login: 'jtl-software' }, { login: 'jtl-scx' }],
+    })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const orgs = await client.getUserOrgs()
+    expect(orgs).toEqual(['jtl-software', 'jtl-scx'])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getUserOrgs returns empty array when the user belongs to no orgs', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = makeJsonFetch({ '/user/orgs': [] })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    expect(await client.getUserOrgs()).toEqual([])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   // getRepos
   test('getRepos maps API response fields to GitHubRepo', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
