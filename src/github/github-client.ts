@@ -64,6 +64,7 @@ export interface GitHubClient {
   getUser(): Promise<GitHubUser>
   getRepos(): Promise<GitHubRepo[]>
   searchRepos(q: string): Promise<GitHubRepo[]>
+  getUserOrgs(): Promise<string[]>
   getPrs(fullName: string): Promise<GitHubPr[]>
   getLastCommitDate(fullName: string): Promise<Date | null>
   getCiStatus(fullName: string, sha: string): Promise<CiStatus>
@@ -178,6 +179,11 @@ export function createGitHubClient(
         stargazersCount: r.stargazers_count,
         updatedAt: r.updated_at,
       }))
+    },
+
+    async getUserOrgs() {
+      const data = (await gfetch('/user/orgs?per_page=100')) as Array<{ login: string }>
+      return data.map((o) => o.login)
     },
 
     async getPrs(fullName) {
