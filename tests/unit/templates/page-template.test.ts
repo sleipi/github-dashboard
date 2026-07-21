@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { PatExpirySeverity } from '../../../src/services/pat-expiry-service.ts'
 import {
+  renderAutoSortToggle,
   renderDashboard,
   renderSetupPage,
   toDashboardViewModel,
@@ -12,8 +13,11 @@ function dashboard(
   avatarUrl: string,
   expiresAt: Date | null = null,
   severity: PatExpirySeverity | null = null,
+  autoSortEnabled = false,
 ): string {
-  return renderDashboard(toDashboardViewModel(cardsHtml, username, avatarUrl, expiresAt, severity))
+  return renderDashboard(
+    toDashboardViewModel(cardsHtml, username, avatarUrl, expiresAt, severity, autoSortEnabled),
+  )
 }
 
 describe('renderSetupPage', () => {
@@ -154,51 +158,120 @@ describe('renderDashboard', () => {
 
 describe('toDashboardViewModel', () => {
   test('expiry is null when expiresAt is null', () => {
-    const vm = toDashboardViewModel('', 'alice', '', null, null)
+    const vm = toDashboardViewModel('', 'alice', '', null, null, false)
     expect(vm.expiry).toBeNull()
   })
 
   test('expiry is null when severity is null', () => {
-    const vm = toDashboardViewModel('', 'alice', '', new Date(), null)
+    const vm = toDashboardViewModel('', 'alice', '', new Date(), null, false)
     expect(vm.expiry).toBeNull()
   })
 
   test('expiry.color matches severity info', () => {
-    const vm = toDashboardViewModel('', 'alice', '', new Date(Date.now() + 86_400_000), 'info')
+    const vm = toDashboardViewModel(
+      '',
+      'alice',
+      '',
+      new Date(Date.now() + 86_400_000),
+      'info',
+      false,
+    )
     expect(vm.expiry?.color).toBe('#388bfd')
   })
 
   test('expiry.color matches severity notice', () => {
-    const vm = toDashboardViewModel('', 'alice', '', new Date(Date.now() + 86_400_000), 'notice')
+    const vm = toDashboardViewModel(
+      '',
+      'alice',
+      '',
+      new Date(Date.now() + 86_400_000),
+      'notice',
+      false,
+    )
     expect(vm.expiry?.color).toBe('#d29922')
   })
 
   test('expiry.color matches severity warning', () => {
-    const vm = toDashboardViewModel('', 'alice', '', new Date(Date.now() + 86_400_000), 'warning')
+    const vm = toDashboardViewModel(
+      '',
+      'alice',
+      '',
+      new Date(Date.now() + 86_400_000),
+      'warning',
+      false,
+    )
     expect(vm.expiry?.color).toBe('#f85149')
   })
 
   test('expiry.buttonTitle contains date and days label', () => {
     const expires = new Date('2026-12-31T00:00:00.000Z')
-    const vm = toDashboardViewModel('', 'alice', '', expires, 'info')
+    const vm = toDashboardViewModel('', 'alice', '', expires, 'info', false)
     expect(vm.expiry?.buttonTitle).toContain('2026-12-31')
     expect(vm.expiry?.buttonTitle).toContain('day')
   })
 
   test('expiry labels say "expired" when token is past due', () => {
     const past = new Date(Date.now() - 86_400_000)
-    const vm = toDashboardViewModel('', 'alice', '', past, 'warning')
+    const vm = toDashboardViewModel('', 'alice', '', past, 'warning', false)
     expect(vm.expiry?.buttonTitle).toContain('expired')
     expect(vm.expiry?.modalLabel).toContain('expired')
   })
 
   test('avatarUrl is null when empty string is passed', () => {
-    const vm = toDashboardViewModel('', 'alice', '', null, null)
+    const vm = toDashboardViewModel('', 'alice', '', null, null, false)
     expect(vm.avatarUrl).toBeNull()
   })
 
   test('avatarUrl is preserved when non-empty', () => {
-    const vm = toDashboardViewModel('', 'alice', 'https://example.com/avatar.png', null, null)
+    const vm = toDashboardViewModel(
+      '',
+      'alice',
+      'https://example.com/avatar.png',
+      null,
+      null,
+      false,
+    )
     expect(vm.avatarUrl).toBe('https://example.com/avatar.png')
+  })
+
+  test('autoSortEnabled reflects the passed flag', () => {
+    expect(toDashboardViewModel('', 'alice', '', null, null, true).autoSortEnabled).toBe(true)
+    expect(toDashboardViewModel('', 'alice', '', null, null, false).autoSortEnabled).toBe(false)
+  })
+})
+
+describe('renderAutoSortToggle', () => {
+  test('reflects off state with the "Auto Sort" label and a muted track color', () => {
+    const html = renderAutoSortToggle(false)
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).toContain('Auto Sort')
+    expect(html).toContain('#30363d')
+  })
+
+  test('reflects on state with the accent track color', () => {
+    const html = renderAutoSortToggle(true)
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('Auto Sort')
+    expect(html).toContain('#1f6feb')
+  })
+
+  test('wires the HTMX toggle attributes regardless of state', () => {
+    for (const enabled of [false, true]) {
+      const html = renderAutoSortToggle(enabled)
+      expect(html).toContain('hx-post="/api/settings/auto-sort"')
+      expect(html).toContain('hx-target="this"')
+      expect(html).toContain('hx-swap="outerHTML"')
+    }
+  })
+})
+
+describe('renderDashboard — auto-sort toggle placement', () => {
+  test('toggle button appears before the Refresh button', () => {
+    const html = dashboard('', 'alice', '')
+    const toggleIdx = html.indexOf('id="auto-sort-toggle"')
+    const refreshIdx = html.indexOf('Refresh')
+    expect(toggleIdx).toBeGreaterThan(-1)
+    expect(refreshIdx).toBeGreaterThan(-1)
+    expect(toggleIdx).toBeLessThan(refreshIdx)
   })
 })

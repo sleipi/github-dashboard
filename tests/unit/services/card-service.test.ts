@@ -1,8 +1,40 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
+import type { PullRequest, SecurityAlert } from '../../../src/db/types.ts'
 import type { GitHubClient } from '../../../src/github/github-client.ts'
-import { createCardService } from '../../../src/services/card-service.ts'
+import { computeMostRecentActivity, createCardService } from '../../../src/services/card-service.ts'
 import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
+
+function makePr(overrides: Partial<PullRequest> = {}): PullRequest {
+  return {
+    repoFullName: 'alice/alpha',
+    number: 1,
+    title: 'pr',
+    draft: false,
+    ciStatus: 'unknown',
+    prUrl: 'https://github.com/alice/alpha/pull/1',
+    creator: 'alice',
+    labels: [],
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    ...overrides,
+  }
+}
+
+function makeAlert(overrides: Partial<SecurityAlert> = {}): SecurityAlert {
+  return {
+    repoFullName: 'alice/alpha',
+    number: 1,
+    ecosystem: 'npm',
+    packageName: 'lodash',
+    title: 'Prototype Pollution in lodash',
+    severity: 'high',
+    cvssScore: 7.4,
+    createdAt: new Date('2026-01-01'),
+    htmlUrl: 'https://github.com/alice/alpha/security/dependabot/1',
+    ...overrides,
+  }
+}
 
 function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
   return {
@@ -318,6 +350,86 @@ describe('CardService', () => {
 
     expect(pinned).toContain('alice/alpha')
     expect(pinned).toContain('alice/beta')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+})
+
+describe('computeMostRecentActivity', () => {
+  test('returns null when all sources are empty', () => {
+    expect(computeMostRecentActivity(null, [], [])).toBeNull()
+  })
+
+  test('returns lastCommitAt when it is the only source', () => {
+    const commitAt = new Date('2026-05-01')
+    expect(computeMostRecentActivity(commitAt, [], [])).toEqual(commitAt)
+  })
+
+  test('returns PR updatedAt when it is newer than lastCommitAt', () => {
+    const commitAt = new Date('2026-01-01')
+    const prUpdatedAt = new Date('2026-06-01')
+    const prs = [makePr({ updatedAt: prUpdatedAt })]
+
+    expect(computeMostRecentActivity(commitAt, prs, [])).toEqual(prUpdatedAt)
+  })
+
+  test('returns alert createdAt when it is newer than commit and PRs', () => {
+    const commitAt = new Date('2026-01-01')
+    const prs = [makePr({ updatedAt: new Date('2026-02-01') })]
+    const alertCreatedAt = new Date('2026-07-01')
+    const alerts = [makeAlert({ createdAt: alertCreatedAt })]
+
+    expect(computeMostRecentActivity(commitAt, prs, alerts)).toEqual(alertCreatedAt)
+  })
+
+  test('takes the max across multiple PRs and alerts, not just the first', () => {
+    const prs = [
+      makePr({ number: 1, updatedAt: new Date('2026-01-01') }),
+      makePr({ number: 2, updatedAt: new Date('2026-08-01') }),
+      makePr({ number: 3, updatedAt: new Date('2026-03-01') }),
+    ]
+    const alerts = [
+      makeAlert({ number: 1, createdAt: new Date('2026-02-01') }),
+      makeAlert({ number: 2, createdAt: new Date('2026-04-01') }),
+    ]
+
+    expect(computeMostRecentActivity(null, prs, alerts)).toEqual(new Date('2026-08-01'))
+  })
+})
+
+describe('CardService auto-sort', () => {
+  test('getCard populates mostRecentActivityAt from cache/PRs/alerts', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: new Date('2026-01-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.pullRequests.upsertPrs('alice/alpha', [makePr({ updatedAt: new Date('2026-05-01') })])
+    repos.security.upsertAlerts('alice/alpha', [makeAlert({ createdAt: new Date('2026-03-01') })])
+    const service = createCardService(repos, makeClient())
+
+    const data = await service.getCard('alice/alpha', new Set())
+
+    expect(data.mostRecentActivityAt).toEqual(new Date('2026-05-01'))
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('isAutoSortEnabled defaults to false and setAutoSort toggles + persists', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+
+    expect(service.isAutoSortEnabled()).toBe(false)
+
+    service.setAutoSort(true)
+
+    expect(service.isAutoSortEnabled()).toBe(true)
+    expect(repos.autoSort.isEnabled()).toBe(true)
 
     repos.close()
     cleanupTempDir(dir)

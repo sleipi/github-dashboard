@@ -377,4 +377,176 @@ describe('card routes', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  test('GET /api/cards keeps pinned order when auto-sort is off', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/older') // pinned first
+    repos.cards.pin('alice/newer') // pinned second
+    repos.pullRequests.upsertCache('alice/older', {
+      lastCommitAt: new Date('2026-01-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.pullRequests.upsertCache('alice/newer', {
+      lastCommitAt: new Date('2026-06-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/cards')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    const olderIdx = body.indexOf('data-card-name="alice/older"')
+    const newerIdx = body.indexOf('data-card-name="alice/newer"')
+    expect(olderIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeGreaterThan(-1)
+    expect(olderIdx).toBeLessThan(newerIdx)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET /api/cards sorts by most recent activity when auto-sort is on', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/older') // pinned first, but activity is older
+    repos.cards.pin('alice/newer') // pinned second, but activity is newer
+    repos.pullRequests.upsertCache('alice/older', {
+      lastCommitAt: new Date('2026-01-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.pullRequests.upsertCache('alice/newer', {
+      lastCommitAt: new Date('2026-06-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.autoSort.setEnabled(true)
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/cards')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    const olderIdx = body.indexOf('data-card-name="alice/older"')
+    const newerIdx = body.indexOf('data-card-name="alice/newer"')
+    expect(olderIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeLessThan(olderIdx)
+
+    // pinned sort_order itself must be untouched by auto-sort
+    const pinned = repos.cards.getPinned()
+    expect(pinned[0]?.fullName).toBe('alice/older')
+    expect(pinned[1]?.fullName).toBe('alice/newer')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET / keeps pinned order and shows toggle off when auto-sort is off', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    repos.cards.pin('alice/older')
+    repos.cards.pin('alice/newer')
+    repos.pullRequests.upsertCache('alice/older', {
+      lastCommitAt: new Date('2026-01-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.pullRequests.upsertCache('alice/newer', {
+      lastCommitAt: new Date('2026-06-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    const olderIdx = body.indexOf('data-card-name="alice/older"')
+    const newerIdx = body.indexOf('data-card-name="alice/newer"')
+    expect(olderIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeGreaterThan(-1)
+    expect(olderIdx).toBeLessThan(newerIdx)
+    expect(body).toContain('aria-pressed="false"')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('GET / sorts by most recent activity and shows toggle on when auto-sort is on', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+    repos.cards.pin('alice/older')
+    repos.cards.pin('alice/newer')
+    repos.pullRequests.upsertCache('alice/older', {
+      lastCommitAt: new Date('2026-01-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.pullRequests.upsertCache('alice/newer', {
+      lastCommitAt: new Date('2026-06-01'),
+      prTotal: 0,
+      dependabotCount: 0,
+    })
+    repos.autoSort.setEnabled(true)
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+    const body = await res.text()
+
+    const olderIdx = body.indexOf('data-card-name="alice/older"')
+    const newerIdx = body.indexOf('data-card-name="alice/newer"')
+    expect(olderIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeGreaterThan(-1)
+    expect(newerIdx).toBeLessThan(olderIdx)
+    expect(body).toContain('aria-pressed="true"')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/auto-sort toggles state, returns updated button HTML and HX-Trigger', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/settings/auto-sort')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+
+    const res1 = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const body1 = await res1.text()
+    expect(res1.headers.get('HX-Trigger')).toBe('cardsChanged')
+    expect(body1).toContain('aria-pressed="true"')
+    expect(repos.autoSort.isEnabled()).toBe(true)
+
+    const res2 = await route.handle(new Request(url.href, { method: 'POST' }), url)
+    const body2 = await res2.text()
+    expect(body2).toContain('aria-pressed="false"')
+    expect(repos.autoSort.isEnabled()).toBe(false)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
 })

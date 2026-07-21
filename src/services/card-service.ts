@@ -1,6 +1,12 @@
 // src/services/card-service.ts
 import type { Repos } from '../db/repos.ts'
-import type { PullRequest, RefreshHint, RepoCache, SecurityCounts } from '../db/types.ts'
+import type {
+  PullRequest,
+  RefreshHint,
+  RepoCache,
+  SecurityAlert,
+  SecurityCounts,
+} from '../db/types.ts'
 import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
 import { calculateSecurityCounts } from './security-service.ts'
 
@@ -11,6 +17,7 @@ export type CardData = {
   readonly cache: RepoCache
   readonly prs: ReadonlyArray<PullRequest>
   readonly securityCounts: SecurityCounts
+  readonly mostRecentActivityAt: Date | null
 }
 
 export type CardService = {
@@ -19,6 +26,20 @@ export type CardService = {
   getAllRepos(): Promise<GitHubRepo[]>
   togglePin(fullName: string): boolean
   reorder(fullNames: string[]): void
+  isAutoSortEnabled(): boolean
+  setAutoSort(enabled: boolean): void
+}
+
+export function computeMostRecentActivity(
+  lastCommitAt: Date | null,
+  prs: ReadonlyArray<PullRequest>,
+  alerts: ReadonlyArray<SecurityAlert>,
+): Date | null {
+  const timestamps: number[] = []
+  if (lastCommitAt) timestamps.push(lastCommitAt.getTime())
+  for (const pr of prs) timestamps.push(pr.updatedAt.getTime())
+  for (const alert of alerts) timestamps.push(alert.createdAt.getTime())
+  return timestamps.length === 0 ? null : new Date(Math.max(...timestamps))
 }
 
 export function createCardService(repos: Repos, client: GitHubClient): CardService {
@@ -104,8 +125,9 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const alerts = repos.security.getAlerts(fullName)
     const sla = repos.sla.getSla()
     const securityCounts = calculateSecurityCounts(alerts, sla, new Date())
+    const mostRecentActivityAt = computeMostRecentActivity(cacheWithDep.lastCommitAt, prs, alerts)
 
-    return { fullName, cache: cacheWithDep, prs, securityCounts }
+    return { fullName, cache: cacheWithDep, prs, securityCounts, mostRecentActivityAt }
   }
 
   return {
@@ -130,6 +152,14 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
 
     reorder(fullNames) {
       repos.cards.reorder(fullNames)
+    },
+
+    isAutoSortEnabled() {
+      return repos.autoSort.isEnabled()
+    },
+
+    setAutoSort(enabled) {
+      repos.autoSort.setEnabled(enabled)
     },
   }
 }

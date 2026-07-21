@@ -5,9 +5,11 @@ import {
   renderCard,
   renderCardError,
   renderCards,
+  sortCardsByActivity,
   toCardViewModel,
 } from '../../../src/templates/card-template.ts'
 import { DASHBOARD_CSS } from '../../../src/templates/styles.ts'
+import type { CardViewModel } from '../../../src/templates/types.ts'
 
 const emptyCardData = (fullName: string): CardData => ({
   fullName,
@@ -26,6 +28,7 @@ const emptyCardData = (fullName: string): CardData => ({
     low: 0,
     overdueSeverities: new Set(),
   },
+  mostRecentActivityAt: new Date('2026-06-20T10:00:00Z'),
 })
 
 describe('toCardViewModel', () => {
@@ -443,5 +446,72 @@ describe('renderCardError', () => {
     const html = renderCardError('<evil>/repo', 'error')
     expect(html).not.toContain('<evil>')
     expect(html).toContain('&lt;evil&gt;')
+  })
+})
+
+describe('toCardViewModel — mostRecentActivityAt', () => {
+  test('carries the epoch ms of CardData.mostRecentActivityAt', () => {
+    const data = { ...emptyCardData('alice/alpha'), mostRecentActivityAt: new Date('2026-05-01') }
+    const vm = toCardViewModel(data, [])
+    expect(vm.mostRecentActivityAt).toBe(new Date('2026-05-01').getTime())
+  })
+
+  test('is null when CardData.mostRecentActivityAt is null', () => {
+    const data = { ...emptyCardData('alice/alpha'), mostRecentActivityAt: null }
+    const vm = toCardViewModel(data, [])
+    expect(vm.mostRecentActivityAt).toBeNull()
+  })
+})
+
+describe('sortCardsByActivity', () => {
+  function makeVm(fullName: string, mostRecentActivityAt: number | null): CardViewModel {
+    return { ...toCardViewModel(emptyCardData(fullName), []), mostRecentActivityAt }
+  }
+
+  test('sorts descending by mostRecentActivityAt (newest first)', () => {
+    const older = makeVm('alice/older', 1000)
+    const newer = makeVm('alice/newer', 2000)
+
+    const sorted = sortCardsByActivity([older, newer])
+
+    expect(sorted.map((v) => v.fullName)).toEqual(['alice/newer', 'alice/older'])
+  })
+
+  test('sorts null last', () => {
+    const withDate = makeVm('alice/with-date', 1000)
+    const withoutDate = makeVm('alice/no-date', null)
+
+    const sorted = sortCardsByActivity([withoutDate, withDate])
+
+    expect(sorted.map((v) => v.fullName)).toEqual(['alice/with-date', 'alice/no-date'])
+  })
+
+  test('returns empty array for empty input', () => {
+    expect(sortCardsByActivity([])).toEqual([])
+  })
+
+  test('returns single-element array unchanged', () => {
+    const vm = makeVm('alice/solo', 500)
+    expect(sortCardsByActivity([vm])).toEqual([vm])
+  })
+
+  test('does not mutate the input array', () => {
+    const older = makeVm('alice/older', 1000)
+    const newer = makeVm('alice/newer', 2000)
+    const input = [older, newer]
+
+    sortCardsByActivity(input)
+
+    expect(input).toEqual([older, newer])
+  })
+
+  test('preserves relative order for cards with identical mostRecentActivityAt (stable sort)', () => {
+    const first = makeVm('alice/first', 1000)
+    const second = makeVm('alice/second', 1000)
+    const third = makeVm('alice/third', 1000)
+
+    const sorted = sortCardsByActivity([first, second, third])
+
+    expect(sorted.map((v) => v.fullName)).toEqual(['alice/first', 'alice/second', 'alice/third'])
   })
 })

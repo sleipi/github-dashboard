@@ -34,7 +34,7 @@ function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel 
 }
 
 export function toCardViewModel(data: CardData, activities: readonly Activity[]): CardViewModel {
-  const { fullName, cache, prs, securityCounts } = data
+  const { fullName, cache, prs, securityCounts, mostRecentActivityAt } = data
   const [owner = '', name = ''] = fullName.split('/')
   const now = new Date()
 
@@ -91,6 +91,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     loadingId: `ld-${fullName.replace(/[^a-z0-9]/gi, '-')}`,
     borderStyle: buildBorderStyle(cache.lastCommitAt),
     secHtmxPath: `/api/security/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
+    mostRecentActivityAt: mostRecentActivityAt ? mostRecentActivityAt.getTime() : null,
   }
 }
 
@@ -262,6 +263,14 @@ export function renderCardError(fullName: string, message: string): string {
     </div>
   </div>
 </div>`
+}
+
+export function sortCardsByActivity(vms: readonly CardViewModel[]): CardViewModel[] {
+  return [...vms].sort((a, b) => {
+    const aT = a.mostRecentActivityAt ?? Number.NEGATIVE_INFINITY
+    const bT = b.mostRecentActivityAt ?? Number.NEGATIVE_INFINITY
+    return bT - aT
+  })
 }
 
 export function renderCards(vms: CardViewModel[]): string {
