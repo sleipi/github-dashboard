@@ -3,11 +3,17 @@
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
+    "domains": {
+      "types": "recommended"
+    },
     "rules": {
       "preset": "recommended",
       "correctness": {
         "noUnusedVariables": "error",
         "noUnusedImports": "error"
+      },
+      "nursery": {
+        "noFloatingPromises": "error"
       },
       "style": {
         "useConst": "error"
