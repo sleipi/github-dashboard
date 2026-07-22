@@ -4,7 +4,7 @@ A local, self-hosted GitHub dashboard showing your pinned repositories at a glan
 
 Runs entirely on your machine. No cloud, no accounts, no tracking. Your GitHub token stays local.
 
-![dashboard screenshot](docs/screenshot.png)
+![dashboard screenshot](docs/screenshots/dashboard-v1.png)
 
 ## Features
 
@@ -44,6 +44,12 @@ On first launch you'll be prompted for your GitHub token. It's stored locally in
 
 ```bash
 GH_DASH_DB=/path/to/my.db bun run start
+```
+
+Useful to try the dashboard against a throwaway test DB without touching your real data:
+
+```bash
+GH_DASH_DB=./demo.db bun run src/index.ts
 ```
 
 ### Custom port
