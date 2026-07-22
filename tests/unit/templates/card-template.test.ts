@@ -29,6 +29,7 @@ const emptyCardData = (fullName: string): CardData => ({
     overdueSeverities: new Set(),
   },
   mostRecentActivityAt: new Date('2026-06-20T10:00:00Z'),
+  color: null,
 })
 
 describe('toCardViewModel', () => {
@@ -345,6 +346,26 @@ describe('renderCard', () => {
     }
     const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('M6.457 1.047') // warning triangle SVG path
+  })
+
+  test('no custom header style when color is null', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    expect(vm.headerBg).toBeNull()
+    const html = renderCard(vm)
+    expect(html).not.toContain('background:#')
+  })
+
+  test('applies a 10px colored top border on the card header', () => {
+    const data: CardData = { ...emptyCardData('alice/alpha'), color: '#0b6605' }
+    const vm = toCardViewModel(data, [])
+    expect(vm.headerBg).toBe('#0b6605')
+    const html = renderCard(vm)
+    expect(html).toContain('border-top:10px solid #0b6605')
+  })
+
+  test('renders a color-picker swatch button next to the remove button', () => {
+    const html = renderCard(toCardViewModel(emptyCardData('alice/alpha'), []))
+    expect(html).toContain('hx-get="/api/color-picker/alice/alpha"')
   })
 
   test('gear icon links to SLA settings', () => {

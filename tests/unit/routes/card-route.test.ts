@@ -34,6 +34,111 @@ function makeCardService(repos: ReturnType<typeof createSqliteRepos>) {
   return createCardService(repos, makeClient())
 }
 
+describe('card color routes', () => {
+  test('GET /api/color-picker/owner/repo renders the modal', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-color-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/color-picker/alice/alpha')
+    const route = routes.find((r) => r.match(url, 'GET'))
+    if (!route) throw new Error('route not found')
+    const res = await route.handle(new Request(url.href), url)
+
+    expect(res.status).toBe(200)
+    const body = await res.text()
+    expect(body).toContain('card-color-input')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/card-color/owner/repo saves a valid hex color', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-color-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/settings/card-color/alice/alpha')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const form = new URLSearchParams({ color: '#ff8800' })
+    const res = await route.handle(
+      new Request(url.href, {
+        method: 'POST',
+        body: form,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+      url,
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('HX-Trigger')).toBe('cardsChanged')
+    expect(repos.cards.getColor('alice/alpha')).toBe('#ff8800')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/card-color/owner/repo with empty color resets it', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-color-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/settings/card-color/alice/alpha')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const form = new URLSearchParams({ color: '' })
+    const res = await route.handle(
+      new Request(url.href, {
+        method: 'POST',
+        body: form,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+      url,
+    )
+
+    expect(res.status).toBe(200)
+    expect(repos.cards.getColor('alice/alpha')).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('POST /api/settings/card-color/owner/repo rejects an invalid color with 400', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-card-color-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const service = createCardService(repos, makeClient())
+    const routes = createCardRoutes(service, makeActivityService(), repos.auth, makeClient())
+
+    const url = new URL('http://localhost:4242/api/settings/card-color/alice/alpha')
+    const route = routes.find((r) => r.match(url, 'POST'))
+    if (!route) throw new Error('route not found')
+    const form = new URLSearchParams({ color: 'not-a-color' })
+    const res = await route.handle(
+      new Request(url.href, {
+        method: 'POST',
+        body: form,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+      url,
+    )
+
+    expect(res.status).toBe(400)
+    expect(repos.cards.getColor('alice/alpha')).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+})
+
 describe('card routes', () => {
   test('POST /api/cards/owner/repo toggles pin and returns HX-Trigger', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-card-route-')

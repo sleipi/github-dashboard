@@ -16,6 +16,7 @@ export type PinnedRepo = {
   readonly fullName: string
   readonly sortOrder: number
   readonly pinnedAt: Date
+  readonly color: string | null
 }
 
 export type RepoCache = {

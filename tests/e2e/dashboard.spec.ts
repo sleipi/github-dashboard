@@ -658,6 +658,43 @@ test.describe('Global Search Toggle', () => {
   })
 })
 
+test.describe('Card color picker', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.request.post('/api/test/restore-session')
+    await page.goto('/')
+    await page.waitForSelector('.card')
+  })
+
+  test('setting a color adds a top accent border and reset clears it', async ({ page }) => {
+    const card = page.locator('.card').first()
+    const cardId = await card.getAttribute('id')
+    if (!cardId) throw new Error('card has no id')
+
+    await card.locator('button[title="Card color"]').click()
+
+    const modal = page.locator('.modal')
+    await expect(modal).toBeVisible()
+
+    const input = modal.locator('#card-color-input')
+    await input.fill('#ff8800')
+    await modal.getByRole('button', { name: 'Save' }).click()
+
+    await expect(page.locator('#modal')).toBeEmpty()
+    const header = page.locator(`#${cardId} .card-header`)
+    await expect(header).toHaveCSS('border-top-color', 'rgb(255, 136, 0)')
+    await expect(header).toHaveCSS('border-top-width', '10px')
+
+    await header.locator('button[title="Card color"]').click()
+    await page.locator('.modal').getByRole('button', { name: 'Reset' }).click()
+
+    await expect(page.locator('#modal')).toBeEmpty()
+    await expect(page.locator(`#${cardId} .card-header`)).not.toHaveCSS(
+      'border-top-color',
+      'rgb(255, 136, 0)',
+    )
+  })
+})
+
 test.describe('security badge', () => {
   test.beforeEach(async ({ page }) => {
     await page.request.post('/api/test/restore-session')

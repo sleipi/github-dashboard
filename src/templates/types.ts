@@ -49,6 +49,7 @@ export type CardViewModel = {
   readonly loadingId: string
   readonly borderStyle: string
   readonly mostRecentActivityAt: number | null
+  readonly headerBg: string | null
 }
 
 export type RepoListItemViewModel = {

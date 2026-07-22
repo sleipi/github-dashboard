@@ -10,6 +10,7 @@ import {
   sortCardsByActivity,
   toCardViewModel,
 } from '../templates/card-template.ts'
+import { renderColorPickerModal } from '../templates/modal-template.ts'
 import {
   renderAutoSortToggle,
   renderDashboard,
@@ -167,6 +168,37 @@ export function createCardRoutes(
         const newState = !cardService.isAutoSortEnabled()
         cardService.setAutoSort(newState)
         return htmxTrigger(renderAutoSortToggle(newState), 'cardsChanged')
+      },
+    },
+    // GET /api/color-picker/:owner/:repo — color picker modal
+    {
+      match: (url, method) =>
+        method === 'GET' && /^\/api\/color-picker\/[^/]+\/[^/]+$/.test(url.pathname),
+      handle(_req, url) {
+        const [, , , owner, repo] = url.pathname.split('/')
+        const fullName = `${owner}/${repo}`
+        const currentColor = cardService.getCardColor(fullName)
+        return html(renderColorPickerModal(fullName, currentColor))
+      },
+    },
+    // POST /api/settings/card-color/:owner/:repo — save or reset a card's header color
+    {
+      match: (url, method) =>
+        method === 'POST' && /^\/api\/settings\/card-color\/[^/]+\/[^/]+$/.test(url.pathname),
+      async handle(req, url) {
+        const [, , , , owner, repo] = url.pathname.split('/')
+        const fullName = `${owner}/${repo}`
+        const form = await req.formData()
+        const raw = ((form.get('color') as string) ?? '').trim()
+
+        try {
+          cardService.setCardColor(fullName, raw === '' ? null : raw)
+        } catch {
+          return html('Invalid color', 400)
+        }
+
+        const vm = await buildCardVm(fullName, cardService, activityService)
+        return htmxTrigger(renderCard(vm), 'cardsChanged')
       },
     },
   ]
