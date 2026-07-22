@@ -1,8 +1,8 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
 import type { ActivityService } from '../services/activity-service.ts'
 import { renderActivityModal } from '../templates/activity-template.ts'
-import { html } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html } from './route-handler.ts'
 
 export function createActivityRoutes(
   activityService: ActivityService,

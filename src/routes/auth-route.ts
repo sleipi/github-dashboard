@@ -1,8 +1,8 @@
 import type { AuthRepo } from '../db/auth/auth-repo.ts'
 import type { GitHubClient } from '../github/github-client.ts'
 import { renderSetupPage } from '../templates/page-template.ts'
-import { html, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html, redirect } from './route-handler.ts'
 
 export function createAuthRoutes(authRepo: AuthRepo, client: GitHubClient): RouteHandler[] {
   return [

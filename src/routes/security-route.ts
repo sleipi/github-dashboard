@@ -5,8 +5,8 @@ import {
   renderSlaSettingsModal,
   toSecurityModalViewModel,
 } from '../templates/security-modal-template.ts'
-import { html } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html } from './route-handler.ts'
 
 export function createSecurityRoutes(
   securityRepo: SecurityAlertsRepo,
