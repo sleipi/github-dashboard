@@ -16,8 +16,8 @@ import {
   renderDashboard,
   toDashboardViewModel,
 } from '../templates/page-template.ts'
-import { html, htmlWithTrigger, htmxTrigger, redirect } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html, htmlWithTrigger, htmxTrigger, redirect } from './route-handler.ts'
 
 async function buildCardVm(
   fullName: string,

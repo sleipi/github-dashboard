@@ -1,7 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
-import type { GitHubRepo } from '../../../src/github/github-client.ts'
-import type { GitHubClient } from '../../../src/github/github-client.ts'
+import type { GitHubClient, GitHubRepo } from '../../../src/github/github-client.ts'
 import { createModalRoutes } from '../../../src/routes/modal-route.ts'
 import { createCardService } from '../../../src/services/card-service.ts'
 import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'

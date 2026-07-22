@@ -1,7 +1,7 @@
 import type { PrRepo } from '../db/pull-requests/pr-repo.ts'
 import { renderPrModal } from '../templates/pr-modal-template.ts'
-import { html } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html } from './route-handler.ts'
 
 export function createPrRoutes(prRepo: PrRepo): RouteHandler[] {
   return [

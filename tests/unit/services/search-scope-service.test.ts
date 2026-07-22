@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildScopeLabel, buildScopedQuery } from '../../../src/services/search-scope-service.ts'
+import { buildScopedQuery, buildScopeLabel } from '../../../src/services/search-scope-service.ts'
 
 describe('buildScopedQuery', () => {
   test('appends user and org qualifiers', () => {

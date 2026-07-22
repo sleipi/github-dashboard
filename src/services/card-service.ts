@@ -57,7 +57,7 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const existing = repos.pullRequests.getCache(fullName)
 
     let githubPrs: Awaited<ReturnType<typeof client.getPrs>> | null = null
-    let lastCommitAt: Date | null | undefined = undefined
+    let lastCommitAt: Date | null | undefined
     try {
       ;[githubPrs, lastCommitAt] = await Promise.all([
         refreshNeeded.has('prs') ? client.getPrs(fullName) : Promise.resolve(null),

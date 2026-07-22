@@ -3,9 +3,9 @@ import type { CardRepo } from '../db/cards/card-repo.ts'
 import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
 import type { CardService } from '../services/card-service.ts'
 import {
-  GLOBAL_SCOPE_LABEL,
-  buildScopeLabel,
   buildScopedQuery,
+  buildScopeLabel,
+  GLOBAL_SCOPE_LABEL,
 } from '../services/search-scope-service.ts'
 import {
   renderRepoModal,
@@ -13,8 +13,8 @@ import {
   renderSearchScopeAndResults,
   toRepoListItem,
 } from '../templates/modal-template.ts'
-import { html } from './route-handler.ts'
 import type { RouteHandler } from './route-handler.ts'
+import { html } from './route-handler.ts'
 
 async function getOrgLogins(client: GitHubClient): Promise<string[]> {
   try {
