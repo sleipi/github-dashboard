@@ -11,6 +11,7 @@ import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
 import { calculateSecurityCounts } from './security-service.ts'
 
 const MAX_CI_CHECKS = 3
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i
 
 export type CardData = {
   readonly fullName: string
@@ -18,6 +19,7 @@ export type CardData = {
   readonly prs: ReadonlyArray<PullRequest>
   readonly securityCounts: SecurityCounts
   readonly mostRecentActivityAt: Date | null
+  readonly color: string | null
 }
 
 export type CardService = {
@@ -30,6 +32,8 @@ export type CardService = {
   setAutoSort(enabled: boolean): void
   isGlobalSearchEnabled(): boolean
   setGlobalSearchEnabled(enabled: boolean): void
+  getCardColor(fullName: string): string | null
+  setCardColor(fullName: string, color: string | null): void
 }
 
 export function computeMostRecentActivity(
@@ -128,8 +132,9 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const sla = repos.sla.getSla()
     const securityCounts = calculateSecurityCounts(alerts, sla, new Date())
     const mostRecentActivityAt = computeMostRecentActivity(cacheWithDep.lastCommitAt, prs, alerts)
+    const color = repos.cards.getColor(fullName)
 
-    return { fullName, cache: cacheWithDep, prs, securityCounts, mostRecentActivityAt }
+    return { fullName, cache: cacheWithDep, prs, securityCounts, mostRecentActivityAt, color }
   }
 
   return {
@@ -170,6 +175,17 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
 
     setGlobalSearchEnabled(enabled) {
       repos.globalSearch.setEnabled(enabled)
+    },
+
+    getCardColor(fullName) {
+      return repos.cards.getColor(fullName)
+    },
+
+    setCardColor(fullName, color) {
+      if (color !== null && !HEX_COLOR_RE.test(color)) {
+        throw new Error(`Invalid color: ${color}`)
+      }
+      repos.cards.setColor(fullName, color)
     },
   }
 }

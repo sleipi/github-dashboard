@@ -436,6 +436,64 @@ describe('CardService auto-sort', () => {
     cleanupTempDir(dir)
   })
 
+  test('getCard populates color from the pinned repo', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+    const service = createCardService(repos, makeClient())
+
+    const data = await service.getCard('alice/alpha', new Set())
+
+    expect(data.color).toBe('#ff8800')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('setCardColor stores a valid hex color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const service = createCardService(repos, makeClient())
+
+    service.setCardColor('alice/alpha', '#ff8800')
+
+    expect(repos.cards.getColor('alice/alpha')).toBe('#ff8800')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('setCardColor with null resets the color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+    const service = createCardService(repos, makeClient())
+
+    service.setCardColor('alice/alpha', null)
+
+    expect(repos.cards.getColor('alice/alpha')).toBeNull()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('setCardColor rejects an invalid hex color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.cards.pin('alice/alpha')
+    const service = createCardService(repos, makeClient())
+
+    expect(() => service.setCardColor('alice/alpha', 'javascript:alert(1)')).toThrow()
+    expect(() => service.setCardColor('alice/alpha', '#ff88')).toThrow()
+    expect(() => service.setCardColor('alice/alpha', 'red')).toThrow()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('isGlobalSearchEnabled defaults to false and setGlobalSearchEnabled toggles + persists', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
     const repos = createSqliteRepos(dbPath)

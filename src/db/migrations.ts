@@ -82,6 +82,10 @@ const MIGRATIONS: Migration[] = [
       PRIMARY KEY (repo_full_name, number)
     )`)
   },
+  // v5: custom card header color
+  (db) => {
+    db.run('ALTER TABLE pinned_repos ADD COLUMN color TEXT')
+  },
 ]
 
 export function runMigrations(db: Database): void {

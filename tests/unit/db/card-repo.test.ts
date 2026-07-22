@@ -81,4 +81,63 @@ describe('CardRepo', () => {
     expect(names).toEqual(['first', 'second', 'third'])
     repos.close()
   })
+
+  test('color defaults to null for a newly pinned repo', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-cards-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.cards.pin('alice/alpha')
+
+    expect(repos.cards.getPinned()[0]?.color).toBeNull()
+    repos.close()
+  })
+
+  test('setColor stores and getPinned returns the color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-cards-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+
+    expect(repos.cards.getPinned()[0]?.color).toBe('#ff8800')
+    repos.close()
+  })
+
+  test('getColor returns null for a repo with no custom color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-cards-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.cards.pin('alice/alpha')
+
+    expect(repos.cards.getColor('alice/alpha')).toBeNull()
+    repos.close()
+  })
+
+  test('getColor returns the stored color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-cards-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+
+    expect(repos.cards.getColor('alice/alpha')).toBe('#ff8800')
+    repos.close()
+  })
+
+  test('setColor with null resets the color', () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-cards-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+
+    repos.cards.pin('alice/alpha')
+    repos.cards.setColor('alice/alpha', '#ff8800')
+    repos.cards.setColor('alice/alpha', null)
+
+    expect(repos.cards.getPinned()[0]?.color).toBeNull()
+    repos.close()
+  })
 })

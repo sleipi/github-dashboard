@@ -92,6 +92,7 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     borderStyle: buildBorderStyle(cache.lastCommitAt),
     secHtmxPath: `/api/security/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
     mostRecentActivityAt: mostRecentActivityAt ? mostRecentActivityAt.getTime() : null,
+    headerBg: data.color,
   }
 }
 
@@ -102,6 +103,11 @@ const WARN_ICON =
   '</svg>'
 
 const SEP = `<span style="color:#8b949e">&nbsp;·&nbsp;</span>`
+
+const PENCIL_ICON =
+  `<svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">` +
+  `<path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81l-6.286 6.287a.25.25 0 00-.064.108l-.558 1.953 1.953-.558a.25.25 0 00.108-.064l6.286-6.286z"/>` +
+  '</svg>'
 
 function renderSecurityBadge(vm: CardViewModel): string {
   if (!vm.secScopeAvailable) {
@@ -137,6 +143,7 @@ export function renderCard(vm: CardViewModel): string {
   const safeOwner = escapeHtml(vm.owner)
   const safeName = escapeHtml(vm.name)
   const safeFullName = escapeHtml(vm.fullName)
+  const headerStyle = vm.headerBg ? ` style="border-top:10px solid ${vm.headerBg}"` : ''
   return `
 <div class="card" id="card-${safeOwner}-${safeName}" draggable="true" data-card-name="${safeFullName}"
      style="position:relative;${vm.borderStyle}">
@@ -148,7 +155,7 @@ export function renderCard(vm: CardViewModel): string {
     <div class="skeleton" style="height:10px;width:75%;border-radius:3px"></div>
     <div class="skeleton" style="height:10px;width:55%;border-radius:3px"></div>
   </div>
-  <div class="card-header">
+  <div class="card-header"${headerStyle}>
     <div style="flex:1;min-width:0;overflow:hidden">
       <a href="${vm.repoUrl}" target="_blank" rel="noopener noreferrer"
          style="text-decoration:none;color:inherit">
@@ -158,6 +165,10 @@ export function renderCard(vm: CardViewModel): string {
     </div>
     <span style="font-size:10px;color:#484f58;margin-left:auto">${vm.lastCommit}</span>
     ${vm.showCiDot ? `<div class="ci-dot" style="background:${vm.ciDotColor}" title="${vm.ciDotLabel}"></div>` : ''}
+    <button hx-get="/api/color-picker/${safeOwner}/${safeName}"
+            hx-target="#modal" hx-swap="innerHTML"
+            style="background:transparent;border:none;padding:3px;color:#6e7681;cursor:pointer;line-height:0"
+            title="Card color">${PENCIL_ICON}</button>
     <button hx-get="/api/card/${safeOwner}/${safeName}"
             hx-target="closest .card" hx-swap="outerHTML"
             hx-indicator="#${vm.loadingId}"

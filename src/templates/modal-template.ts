@@ -92,6 +92,59 @@ export function renderSearchScopeAndResults(
   </div>`
 }
 
+export function renderColorPickerModal(fullName: string, currentColor: string | null): string {
+  const [owner = '', name = ''] = fullName.split('/')
+  const safeOwner = escapeHtml(owner)
+  const safeName = escapeHtml(name)
+  const value = currentColor ?? '#3fb950'
+  const postPath = `/api/settings/card-color/${safeOwner}/${safeName}`
+  const cardSelector = `#card-${safeOwner}-${safeName}`
+  const closeModal = "document.getElementById('modal').innerHTML=''"
+  return `
+<div class="modal-overlay" onclick="if(event.target===this)${closeModal}">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:280px">
+    <div style="padding:15px 20px;border-bottom:1px solid #30363d;display:flex;align-items:center;gap:10px">
+      <span style="font-size:15px;font-weight:600;flex:1">Color</span>
+      <button onclick="${closeModal}"
+              style="background:transparent;border:none;color:#8b949e;cursor:pointer;font-size:20px">×</button>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="color-preview" style="width:20px;height:20px;border-radius:50%;flex-shrink:0;
+                     border:1px solid #30363d;background:${value}"></span>
+        <input id="card-color-input" name="color" type="text" value="${escapeHtml(value)}"
+               pattern="^#([0-9a-fA-F]{6})$" maxlength="7"
+               oninput="document.getElementById('color-preview').style.background=this.value"
+               style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;
+                      padding:7px 11px;color:#e6edf3;font-size:13px;font-family:monospace;outline:none"/>
+      </div>
+      <button type="button"
+              onclick="const c='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+                       document.getElementById('card-color-input').value=c;
+                       document.getElementById('color-preview').style.background=c"
+              style="background:transparent;border:none;color:#2f81f7;font-size:12px;
+                     cursor:pointer;padding:0;text-align:left">↻ Choose random color</button>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button type="button"
+                hx-post="${postPath}"
+                hx-include="#card-color-input"
+                hx-target="${cardSelector}" hx-swap="outerHTML"
+                hx-on::after-request="${closeModal}"
+                style="flex:1;background:#238636;border:none;border-radius:6px;color:#fff;
+                       font-size:13px;padding:7px 0;cursor:pointer">Save</button>
+        <button type="button"
+                hx-post="${postPath}"
+                hx-vals='{"color":""}'
+                hx-target="${cardSelector}" hx-swap="outerHTML"
+                hx-on::after-request="${closeModal}"
+                style="flex:1;background:transparent;border:1px solid #30363d;border-radius:6px;
+                       color:#8b949e;font-size:13px;padding:7px 0;cursor:pointer">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>`
+}
+
 export function renderRepoModal(
   repos: GitHubRepo[],
   pinned: Set<string>,

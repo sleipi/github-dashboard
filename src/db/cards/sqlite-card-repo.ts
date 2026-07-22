@@ -1,17 +1,20 @@
 import type { Database } from 'bun:sqlite'
 import type { CardRepo } from './card-repo.ts'
 
-type PinnedRow = { full_name: string; sort_order: number; pinned_at: string }
+type PinnedRow = { full_name: string; sort_order: number; pinned_at: string; color: string | null }
 
 export function createSqliteCardRepo(db: Database): CardRepo {
   const selectAll = db.query<PinnedRow, []>(
-    'SELECT full_name, sort_order, pinned_at FROM pinned_repos ORDER BY sort_order ASC',
+    'SELECT full_name, sort_order, pinned_at, color FROM pinned_repos ORDER BY sort_order ASC',
   )
   const selectOne = db.query<{ count: number }, [string]>(
     'SELECT COUNT(*) as count FROM pinned_repos WHERE full_name = ?',
   )
   const maxOrder = db.query<{ max: number | null }, []>(
     'SELECT MAX(sort_order) as max FROM pinned_repos',
+  )
+  const selectColor = db.query<{ color: string | null }, [string]>(
+    'SELECT color FROM pinned_repos WHERE full_name = ?',
   )
 
   return {
@@ -20,6 +23,7 @@ export function createSqliteCardRepo(db: Database): CardRepo {
         fullName: row.full_name,
         sortOrder: row.sort_order,
         pinnedAt: new Date(row.pinned_at),
+        color: row.color,
       }))
     },
 
@@ -45,6 +49,14 @@ export function createSqliteCardRepo(db: Database): CardRepo {
           db.run('UPDATE pinned_repos SET sort_order = ? WHERE full_name = ?', [i, name])
         })
       })()
+    },
+
+    getColor(fullName) {
+      return selectColor.get(fullName)?.color ?? null
+    },
+
+    setColor(fullName, color) {
+      db.run('UPDATE pinned_repos SET color = ? WHERE full_name = ?', [color, fullName])
     },
   }
 }
