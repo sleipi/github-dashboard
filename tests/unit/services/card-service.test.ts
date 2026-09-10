@@ -47,6 +47,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getCiStatus: mock(async () => 'unknown' as const),
     getRepoEvents: mock(async () => ({ notModified: true as const })),
     getDependabotAlerts: mock(async () => []),
+    getPendingDeployments: mock(async () => []),
     ...overrides,
   }
 }
@@ -155,6 +156,95 @@ describe('CardService', () => {
     const storedPrs = repos.pullRequests.getPrs('alice/alpha')
     expect(storedPrs).toHaveLength(4)
     expect(storedPrs.find((pr) => pr.number === 4)?.ciStatus).toBe('unknown')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard fetches pending deployments only when refreshNeeded includes deployments', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPendingDeployments = mock(async () => [
+      {
+        runId: 1,
+        name: 'Deploy',
+        htmlUrl: 'https://github.com/alice/alpha/actions/runs/1',
+        actor: 'bob',
+        headBranch: 'main',
+        waitingSince: '2026-06-20T10:00:00Z',
+      },
+    ])
+    const service = createCardService(repos, makeClient({ getPendingDeployments }))
+
+    repos.cards.pin('alice/alpha')
+    const data = await service.getCard('alice/alpha', new Set(['deployments']))
+
+    expect(getPendingDeployments).toHaveBeenCalledTimes(1)
+    expect(data.pendingDeployments).toHaveLength(1)
+    expect(data.pendingDeployments[0]?.runId).toBe(1)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard does not fetch pending deployments when refreshNeeded lacks deployments', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPendingDeployments = mock(async () => [])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+    const service = createCardService(repos, makeClient({ getPendingDeployments }))
+
+    await service.getCard('alice/alpha', new Set(['prs']))
+
+    expect(getPendingDeployments).not.toHaveBeenCalled()
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard reuses cached pending deployments across calls when not re-hinted', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const getPendingDeployments = mock(async () => [
+      {
+        runId: 1,
+        name: 'Deploy',
+        htmlUrl: 'https://github.com/alice/alpha/actions/runs/1',
+        actor: 'bob',
+        headBranch: 'main',
+        waitingSince: '2026-06-20T10:00:00Z',
+      },
+    ])
+    const service = createCardService(repos, makeClient({ getPendingDeployments }))
+
+    repos.cards.pin('alice/alpha')
+    await service.getCard('alice/alpha', new Set(['deployments']))
+    const second = await service.getCard('alice/alpha', new Set())
+
+    expect(getPendingDeployments).toHaveBeenCalledTimes(1)
+    expect(second.pendingDeployments).toHaveLength(1)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard returns empty pendingDeployments when never fetched', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    const service = createCardService(repos, makeClient())
+
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 0,
+      dependabotCount: null,
+    })
+    const data = await service.getCard('alice/alpha', new Set())
+
+    expect(data.pendingDeployments).toEqual([])
 
     repos.close()
     cleanupTempDir(dir)

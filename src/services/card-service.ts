@@ -7,7 +7,7 @@ import type {
   SecurityAlert,
   SecurityCounts,
 } from '../db/types.ts'
-import type { GitHubClient, GitHubRepo } from '../github/github-client.ts'
+import type { GitHubClient, GitHubRepo, PendingDeployment } from '../github/github-client.ts'
 import { calculateSecurityCounts } from './security-service.ts'
 
 const MAX_CI_CHECKS = 3
@@ -20,6 +20,7 @@ export type CardData = {
   readonly securityCounts: SecurityCounts
   readonly mostRecentActivityAt: Date | null
   readonly color: string | null
+  readonly pendingDeployments: ReadonlyArray<PendingDeployment>
 }
 
 export type CardService = {
@@ -49,6 +50,11 @@ export function computeMostRecentActivity(
 }
 
 export function createCardService(repos: Repos, client: GitHubClient): CardService {
+  // Pending deployment approvals are live-fetched only, never persisted to SQLite —
+  // this in-memory cache is what getCard() reads back between fetches (mirrors what
+  // repos.pullRequests.getCache/getPrs does for the persisted data).
+  const deploymentsCache = new Map<string, ReadonlyArray<PendingDeployment>>()
+
   async function fetchSelective(
     fullName: string,
     refreshNeeded: ReadonlySet<RefreshHint>,
@@ -58,16 +64,25 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
 
     let githubPrs: Awaited<ReturnType<typeof client.getPrs>> | null = null
     let lastCommitAt: Date | null | undefined
+    let pendingDeployments: PendingDeployment[] | null = null
     try {
-      ;[githubPrs, lastCommitAt] = await Promise.all([
+      ;[githubPrs, lastCommitAt, pendingDeployments] = await Promise.all([
         refreshNeeded.has('prs') ? client.getPrs(fullName) : Promise.resolve(null),
         refreshNeeded.has('commits')
           ? client.getLastCommitDate(fullName)
           : Promise.resolve(undefined),
+        refreshNeeded.has('deployments')
+          ? client.getPendingDeployments(fullName)
+          : Promise.resolve(null),
       ])
     } catch (err) {
       if (!existing) throw err
       return
+    }
+
+    if (pendingDeployments !== null) {
+      deploymentsCache.set(fullName, pendingDeployments)
+      repos.activity.upsertMeta(fullName, { deploymentsCachedAt: now })
     }
 
     if (githubPrs !== null && refreshNeeded.has('prs')) {
@@ -133,8 +148,17 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     const securityCounts = calculateSecurityCounts(alerts, sla, new Date())
     const mostRecentActivityAt = computeMostRecentActivity(cacheWithDep.lastCommitAt, prs, alerts)
     const color = repos.cards.getColor(fullName)
+    const pendingDeployments = deploymentsCache.get(fullName) ?? []
 
-    return { fullName, cache: cacheWithDep, prs, securityCounts, mostRecentActivityAt, color }
+    return {
+      fullName,
+      cache: cacheWithDep,
+      prs,
+      securityCounts,
+      mostRecentActivityAt,
+      color,
+      pendingDeployments,
+    }
   }
 
   return {

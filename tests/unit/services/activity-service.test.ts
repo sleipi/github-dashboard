@@ -15,6 +15,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getCiStatus: mock(async () => 'unknown' as const),
     getRepoEvents: mock(async () => ({ notModified: true as const })),
     getDependabotAlerts: mock(async () => []),
+    getPendingDeployments: mock(async () => []),
     ...overrides,
   }
 }
@@ -59,6 +60,7 @@ describe('ActivityService', () => {
       pollIntervalSecs: 60,
       dependabotCachedAt: new Date(),
       prsCachedAt: new Date(),
+      deploymentsCachedAt: new Date(), // fresh — deployments TTL does not fire
     })
     const getRepoEvents = mock(async () => ({ notModified: true as const }))
     const service = createActivityService(repos, makeClient({ getRepoEvents }))
@@ -83,6 +85,7 @@ describe('ActivityService', () => {
       pollIntervalSecs: 60,
       dependabotCachedAt: new Date(),
       prsCachedAt: new Date(), // fresh — PR TTL does not fire
+      deploymentsCachedAt: new Date(), // fresh — deployments TTL does not fire
     })
     const getRepoEvents = mock(async () => ({ notModified: true as const }))
     const service = createActivityService(repos, makeClient({ getRepoEvents }))
@@ -138,6 +141,68 @@ describe('ActivityService', () => {
 
     expect(result.refreshNeeded.has('prs')).toBe(false)
     expect(result.refreshNeeded.has('commits')).toBe(false)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('sync adds deployments hint when deploymentsCachedAt is stale (> 1 min)', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsEtag: '"e1"',
+      eventsCachedAt: new Date(),
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(), // fresh — PR TTL does not fire
+      deploymentsCachedAt: new Date(Date.now() - 90_000), // 90s ago — stale
+    })
+    const getRepoEvents = mock(async () => ({ notModified: true as const }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('deployments')).toBe(true)
+    expect(result.refreshNeeded.has('prs')).toBe(false)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('sync does NOT add deployments hint when deploymentsCachedAt is fresh (< 1 min)', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    repos.activity.upsertMeta('alice/alpha', {
+      eventsEtag: '"e1"',
+      eventsCachedAt: new Date(),
+      pollIntervalSecs: 60,
+      dependabotCachedAt: new Date(),
+      prsCachedAt: new Date(),
+      deploymentsCachedAt: new Date(Date.now() - 10_000), // 10s ago — fresh
+    })
+    const getRepoEvents = mock(async () => ({ notModified: true as const }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('deployments')).toBe(false)
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('sync adds deployments hint on first-ever sync alongside prs', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    const getRepoEvents = mock(async () => ({ events: [], etag: '"e1"', pollIntervalSecs: 60 }))
+    const service = createActivityService(repos, makeClient({ getRepoEvents }))
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.refreshNeeded.has('deployments')).toBe(true)
 
     repos.close()
     cleanupTempDir(dir)
@@ -217,7 +282,7 @@ describe('ActivityService', () => {
             },
           },
           repo: { name: 'alice/alpha' },
-          createdAt: '2026-06-26T11:24:33Z',
+          createdAt: new Date(Date.now() - 60_000).toISOString(),
         },
       ],
       etag: '"e1"',
@@ -265,7 +330,7 @@ describe('ActivityService', () => {
             },
           },
           repo: { name: 'alice/alpha' },
-          createdAt: '2026-06-26T11:32:29Z',
+          createdAt: new Date(Date.now() - 60_000).toISOString(),
         },
       ],
       etag: '"e1"',
@@ -353,7 +418,7 @@ describe('ActivityService', () => {
             },
           },
           repo: { name: 'alice/alpha' },
-          createdAt: '2026-06-23T10:00:00Z',
+          createdAt: new Date(Date.now() - 60_000).toISOString(),
         },
       ],
       etag: '"e10"',
@@ -530,7 +595,7 @@ describe('ActivityService', () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
     cleanup.push(dir)
     const repos = createSqliteRepos(dbPath)
-    const cutoff = new Date('2026-06-23T10:00:00Z')
+    const cutoff = new Date(Date.now() - 60_000)
 
     repos.activity.upsertActivities('alice/alpha', [
       {
@@ -539,15 +604,15 @@ describe('ActivityService', () => {
         actor: '@bob',
         subject: 'opened #1 — test',
         linkUrl: 'https://github.com/alice/alpha/pull/1',
-        occurredAt: new Date('2026-06-23T10:01:00Z'),
-        recordedAt: new Date('2026-06-23T10:01:00Z'),
+        occurredAt: new Date(Date.now() - 30_000),
+        recordedAt: new Date(Date.now() - 30_000),
         githubEventId: 'x',
       },
     ])
 
     const service = createActivityService(repos, makeClient())
     expect(service.countNewSince(cutoff)).toBe(1)
-    expect(service.countNewSince(new Date('2026-06-23T10:02:00Z'))).toBe(0)
+    expect(service.countNewSince(new Date())).toBe(0)
 
     repos.close()
     cleanupTempDir(dir)
