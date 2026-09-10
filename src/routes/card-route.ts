@@ -133,6 +133,7 @@ export function createCardRoutes(
           const hints = new Set(syncResult.refreshNeeded)
           hints.add('prs')
           hints.add('ci')
+          hints.add('deployments')
           const cardData = await cardService.getCard(fullName, hints)
           const vm = toCardViewModel(cardData, syncResult.activities)
           return html(renderCard(vm))

@@ -713,6 +713,137 @@ describe('GitHubClient', () => {
     cleanupTempDir(dir)
   })
 
+  // getPendingDeployments
+  test('getPendingDeployments maps workflow_runs to PendingDeployment', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(
+      async () =>
+        new Response(
+          JSON.stringify({
+            workflow_runs: [
+              {
+                id: 99,
+                name: 'Deploy to prod',
+                html_url: 'https://github.com/alice/alpha/actions/runs/99',
+                head_branch: 'main',
+                actor: { login: 'bob' },
+                run_started_at: '2026-06-20T10:00:00Z',
+                created_at: '2026-06-20T09:59:00Z',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    )
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const result = await client.getPendingDeployments('alice/alpha')
+
+    expect(result).toEqual([
+      {
+        runId: 99,
+        name: 'Deploy to prod',
+        htmlUrl: 'https://github.com/alice/alpha/actions/runs/99',
+        actor: 'bob',
+        headBranch: 'main',
+        waitingSince: '2026-06-20T10:00:00Z',
+      },
+    ])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getPendingDeployments falls back to created_at when run_started_at is null', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(
+      async () =>
+        new Response(
+          JSON.stringify({
+            workflow_runs: [
+              {
+                id: 1,
+                name: null,
+                html_url: 'https://github.com/alice/alpha/actions/runs/1',
+                head_branch: 'main',
+                actor: null,
+                run_started_at: null,
+                created_at: '2026-06-20T09:59:00Z',
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+    )
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    const result = await client.getPendingDeployments('alice/alpha')
+    expect(result[0]?.name).toBe('workflow')
+    expect(result[0]?.actor).toBe('unknown')
+    expect(result[0]?.waitingSince).toBe('2026-06-20T09:59:00Z')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getPendingDeployments returns empty array on 403', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(async () => new Response('{}', { status: 403 }))
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    expect(await client.getPendingDeployments('alice/alpha')).toEqual([])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getPendingDeployments returns empty array when the request throws', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    const fetchFn = mock(async () => {
+      throw new Error('network error')
+    })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    expect(await client.getPendingDeployments('alice/alpha')).toEqual([])
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getPendingDeployments requests status=waiting', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+    const repos = createSqliteRepos(dbPath)
+    repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+
+    let capturedUrl = ''
+    const fetchFn = mock(async (url: string) => {
+      capturedUrl = url
+      return new Response(JSON.stringify({ workflow_runs: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const client = createGitHubClient(repos.auth, fetchFn)
+
+    await client.getPendingDeployments('alice/alpha')
+    expect(capturedUrl).toContain('status=waiting')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
   test('gfetch throws with fallback status message on non-ok response with no body message', async () => {
     const { dir, dbPath } = createTempDbPath('gh-dash-client-')
     const repos = createSqliteRepos(dbPath)

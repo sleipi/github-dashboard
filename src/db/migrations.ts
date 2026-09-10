@@ -86,6 +86,10 @@ const MIGRATIONS: Migration[] = [
   (db) => {
     db.run('ALTER TABLE pinned_repos ADD COLUMN color TEXT')
   },
+  // v6: track when pending-deployment approvals were last checked (throttle only, no data persisted)
+  (db) => {
+    db.run('ALTER TABLE activity_meta ADD COLUMN deployments_cached_at TEXT')
+  },
 ]
 
 export function runMigrations(db: Database): void {
