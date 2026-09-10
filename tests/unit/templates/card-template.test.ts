@@ -30,6 +30,7 @@ const emptyCardData = (fullName: string): CardData => ({
   },
   mostRecentActivityAt: new Date('2026-06-20T10:00:00Z'),
   color: null,
+  pendingDeployments: [],
 })
 
 describe('toCardViewModel', () => {
@@ -391,6 +392,64 @@ describe('renderCard', () => {
     const html = renderCard(toCardViewModel(data, []))
     expect(html).toContain('hx-get="/api/prs/alice/busy"')
     expect(html).toContain('more PR')
+  })
+})
+
+describe('toCardViewModel — pendingDeployments', () => {
+  test('hasPendingDeployments is false and no badge rendered when array is empty', () => {
+    const vm = toCardViewModel(emptyCardData('alice/alpha'), [])
+    expect(vm.hasPendingDeployments).toBe(false)
+    expect(vm.pendingDeploymentCount).toBe(0)
+    expect(renderCard(vm)).not.toContain('Awaiting approval')
+  })
+
+  test('maps pendingDeployments to view model rows', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      pendingDeployments: [
+        {
+          runId: 42,
+          name: 'Deploy to prod',
+          htmlUrl: 'https://github.com/alice/alpha/actions/runs/42',
+          actor: 'bob',
+          headBranch: 'main',
+          waitingSince: new Date(Date.now() - 5 * 60_000).toISOString(),
+        },
+      ],
+    }
+    const vm = toCardViewModel(data, [])
+
+    expect(vm.hasPendingDeployments).toBe(true)
+    expect(vm.pendingDeploymentCount).toBe(1)
+    expect(vm.pendingDeployments[0]).toMatchObject({
+      runId: 42,
+      name: 'Deploy to prod',
+      runUrl: 'https://github.com/alice/alpha/actions/runs/42',
+      actor: 'bob',
+      headBranch: 'main',
+    })
+    expect(vm.pendingDeployments[0]?.waitingFor).toContain('m ago')
+  })
+
+  test('renders a link to the GitHub Actions run page when a run is waiting', () => {
+    const data: CardData = {
+      ...emptyCardData('alice/alpha'),
+      pendingDeployments: [
+        {
+          runId: 42,
+          name: 'Deploy to prod',
+          htmlUrl: 'https://github.com/alice/alpha/actions/runs/42',
+          actor: 'bob',
+          headBranch: 'main',
+          waitingSince: new Date().toISOString(),
+        },
+      ],
+    }
+    const html = renderCard(toCardViewModel(data, []))
+
+    expect(html).toContain('Awaiting approval')
+    expect(html).toContain('https://github.com/alice/alpha/actions/runs/42')
+    expect(html).toContain('Deploy to prod')
   })
 })
 
