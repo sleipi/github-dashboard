@@ -216,12 +216,14 @@ export function seedTestDb(dbPath: string, opts: { patExpiresAt?: Date } = {}): 
     eventsCachedAt: new Date(),
     pollIntervalSecs: 60,
     dependabotCachedAt: new Date(),
+    deploymentsCachedAt: new Date(),
   })
   repos.activity.upsertMeta('alice/another-repo', {
     eventsEtag: '"seed-etag-2"',
     eventsCachedAt: new Date(),
     pollIntervalSecs: 60,
     dependabotCachedAt: new Date(),
+    deploymentsCachedAt: new Date(),
   })
 
   // Repo-Cache für another-repo (keine PRs). Commit is more recent than

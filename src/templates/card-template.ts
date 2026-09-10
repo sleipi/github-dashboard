@@ -8,7 +8,12 @@ import {
   formatRelative,
   freshAgeStyle,
 } from './formatters.ts'
-import type { ActivityItemViewModel, CardViewModel, PrRowViewModel } from './types.ts'
+import type {
+  ActivityItemViewModel,
+  CardViewModel,
+  PendingDeploymentViewModel,
+  PrRowViewModel,
+} from './types.ts'
 
 const MAX_PRS_ON_CARD = 5
 const MAX_ACTIVITIES_ON_CARD = 5
@@ -33,8 +38,22 @@ function toActivityItemViewModel(a: Activity, now: Date): ActivityItemViewModel 
   }
 }
 
+function toPendingDeploymentViewModel(
+  d: CardData['pendingDeployments'][number],
+  now: Date,
+): PendingDeploymentViewModel {
+  return {
+    runId: d.runId,
+    name: d.name,
+    runUrl: d.htmlUrl,
+    actor: d.actor,
+    headBranch: d.headBranch,
+    waitingFor: formatRelative(new Date(d.waitingSince), now),
+  }
+}
+
 export function toCardViewModel(data: CardData, activities: readonly Activity[]): CardViewModel {
-  const { fullName, cache, prs, securityCounts, mostRecentActivityAt } = data
+  const { fullName, cache, prs, securityCounts, mostRecentActivityAt, pendingDeployments } = data
   const [owner = '', name = ''] = fullName.split('/')
   const now = new Date()
 
@@ -93,6 +112,9 @@ export function toCardViewModel(data: CardData, activities: readonly Activity[])
     secHtmxPath: `/api/security/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`,
     mostRecentActivityAt: mostRecentActivityAt ? mostRecentActivityAt.getTime() : null,
     headerBg: data.color,
+    pendingDeployments: pendingDeployments.map((d) => toPendingDeploymentViewModel(d, now)),
+    hasPendingDeployments: pendingDeployments.length > 0,
+    pendingDeploymentCount: pendingDeployments.length,
   }
 }
 
@@ -137,6 +159,26 @@ function renderSecurityBadge(vm: CardViewModel): string {
     title="View security alerts">
     <span style="color:#6e7681">Security Alerts</span>${SEP}${parts.join(SEP)}
   </button>`
+}
+
+function renderPendingDeploymentsBadge(vm: CardViewModel): string {
+  if (!vm.hasPendingDeployments) return ''
+  const countLabel = vm.pendingDeploymentCount === 1 ? '1 run' : `${vm.pendingDeploymentCount} runs`
+  return `
+    <div style="margin-bottom:10px;font-size:11px;display:flex;flex-direction:column;gap:2px">
+      <span style="color:#d29922;font-weight:600">⏳ Awaiting approval${SEP}${countLabel}</span>
+      ${vm.pendingDeployments
+        .map(
+          (d) => `
+      <a href="${escapeHtml(d.runUrl)}" target="_blank" rel="noopener noreferrer"
+         style="display:flex;align-items:baseline;gap:5px;font-size:11px;color:#c9d1d9;text-decoration:none;padding:1px 4px;border-radius:3px;margin:0 -4px"
+         title="${escapeHtml(d.name)} · ${escapeHtml(d.headBranch)} · ${escapeHtml(d.actor)}">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.name)}${SEP}<span style="color:#8b949e">${escapeHtml(d.headBranch)}</span></span>
+        <span style="flex-shrink:0;font-size:10px;color:#484f58">${escapeHtml(d.waitingFor)}</span>
+      </a>`,
+        )
+        .join('')}
+    </div>`
 }
 
 export function renderCard(vm: CardViewModel): string {
@@ -184,6 +226,7 @@ export function renderCard(vm: CardViewModel): string {
     <div style="margin-bottom:10px;font-size:11px">
       ${renderSecurityBadge(vm)}
     </div>
+    ${renderPendingDeploymentsBadge(vm)}
     ${
       vm.hasActivities
         ? `

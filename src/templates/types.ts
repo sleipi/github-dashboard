@@ -15,6 +15,15 @@ export type PrRowViewModel = {
   readonly highlightStyle: string // "" or "background:rgba(34,197,94,0.42)"
 }
 
+export type PendingDeploymentViewModel = {
+  readonly runId: number
+  readonly name: string
+  readonly runUrl: string
+  readonly actor: string
+  readonly headBranch: string
+  readonly waitingFor: string
+}
+
 export type CardViewModel = {
   readonly fullName: string
   readonly owner: string
@@ -50,6 +59,9 @@ export type CardViewModel = {
   readonly borderStyle: string
   readonly mostRecentActivityAt: number | null
   readonly headerBg: string | null
+  readonly pendingDeployments: ReadonlyArray<PendingDeploymentViewModel>
+  readonly hasPendingDeployments: boolean
+  readonly pendingDeploymentCount: number
 }
 
 export type RepoListItemViewModel = {

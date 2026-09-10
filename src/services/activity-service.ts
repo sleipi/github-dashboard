@@ -5,6 +5,7 @@ import type { GitHubClient } from '../github/github-client.ts'
 
 const DEP_TTL_MS = 5 * 60_000 // 5 minutes
 const PR_TTL_MS = 5 * 60_000 // 5 minutes — force PR+commit+CI refresh
+const DEPLOYMENTS_TTL_MS = 60_000 // 1 minute — time-sensitive (someone may be blocked waiting)
 
 export type SyncResult = {
   readonly activities: readonly Activity[]
@@ -31,6 +32,15 @@ export function createActivityService(repos: Repos, client: GitHubClient): Activ
         hints.add('prs')
         hints.add('commits')
         hints.add('ci')
+        hints.add('deployments')
+      }
+
+      // Pending deployment approvals: independent short TTL, not tied to the 5-min PR TTL —
+      // this is time-sensitive (someone may be blocked waiting on approval) but must stay
+      // cheap given the UI polls /api/cards every 10s.
+      const lastDeploymentsSync = meta?.deploymentsCachedAt?.getTime() ?? 0
+      if (now - lastDeploymentsSync > DEPLOYMENTS_TTL_MS) {
+        hints.add('deployments')
       }
 
       // Events poll

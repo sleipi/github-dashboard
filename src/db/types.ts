@@ -102,6 +102,7 @@ export type ActivityMeta = {
   readonly pollIntervalSecs: number
   readonly dependabotCachedAt: Date | null
   readonly prsCachedAt: Date | null
+  readonly deploymentsCachedAt: Date | null
 }
 
-export type RefreshHint = 'prs' | 'commits' | 'ci'
+export type RefreshHint = 'prs' | 'commits' | 'ci' | 'deployments'

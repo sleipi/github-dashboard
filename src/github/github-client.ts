@@ -50,6 +50,15 @@ export type GitHubDependabotAlert = {
   readonly createdAt: string
 }
 
+export type PendingDeployment = {
+  readonly runId: number
+  readonly name: string
+  readonly htmlUrl: string
+  readonly actor: string
+  readonly headBranch: string
+  readonly waitingSince: string
+}
+
 export type RepoEventsResult =
   | { readonly notModified: true }
   | {
@@ -70,6 +79,7 @@ export interface GitHubClient {
   getCiStatus(fullName: string, sha: string): Promise<CiStatus>
   getRepoEvents(fullName: string, etag?: string): Promise<RepoEventsResult>
   getDependabotAlerts(fullName: string): Promise<GitHubDependabotAlert[]>
+  getPendingDeployments(fullName: string): Promise<PendingDeployment[]>
 }
 
 export function createGitHubClient(
@@ -307,6 +317,44 @@ export function createGitHubClient(
           cvssScore: a.security_advisory.cvss?.score ?? null,
           htmlUrl: a.html_url,
           createdAt: a.created_at,
+        }))
+      } catch {
+        return []
+      }
+    },
+
+    async getPendingDeployments(fullName) {
+      const token = authRepo.getToken()
+      if (!token) return []
+      try {
+        const res = await fetchFn(
+          `https://api.github.com/repos/${fullName}/actions/runs?status=waiting&per_page=20`,
+          {
+            headers: {
+              Authorization: `token ${token.pat}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          },
+        )
+        if (!res.ok) return []
+        const data = (await res.json()) as {
+          workflow_runs: Array<{
+            id: number
+            name: string | null
+            html_url: string
+            head_branch: string
+            actor: { login: string } | null
+            run_started_at: string | null
+            created_at: string
+          }>
+        }
+        return data.workflow_runs.map((r) => ({
+          runId: r.id,
+          name: r.name ?? 'workflow',
+          htmlUrl: r.html_url,
+          actor: r.actor?.login ?? 'unknown',
+          headBranch: r.head_branch,
+          waitingSince: r.run_started_at ?? r.created_at,
         }))
       } catch {
         return []
