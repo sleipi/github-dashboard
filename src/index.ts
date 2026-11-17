@@ -7,6 +7,7 @@ import { createAuthRoutes } from './routes/auth-route.ts'
 import { createCardRoutes } from './routes/card-route.ts'
 import { createModalRoutes } from './routes/modal-route.ts'
 import { createPrRoutes } from './routes/pr-route.ts'
+import { createRateLimitRoutes } from './routes/rate-limit-route.ts'
 import type { RouteHandler } from './routes/route-handler.ts'
 import { redirect } from './routes/route-handler.ts'
 import { createSecurityRoutes } from './routes/security-route.ts'
@@ -29,6 +30,7 @@ const routes: RouteHandler[] = [
   ...createModalRoutes(cardService, repos.cards, client, repos.auth),
   ...createSecurityRoutes(repos.security, repos.sla),
   ...createPrRoutes(repos.pullRequests),
+  ...createRateLimitRoutes(client),
 ]
 
 if (process.env.PLAYWRIGHT_TEST === '1') {
