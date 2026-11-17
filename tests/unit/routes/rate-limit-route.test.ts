@@ -17,6 +17,11 @@ describe('toRateLimitViewModel', () => {
     expect(vm.label).toContain('4,231/5,000')
   })
 
+  test('shows the reset time in the label', () => {
+    const vm = toRateLimitViewModel({ limit: 5000, remaining: 0, resetAt })
+    expect(vm.label).toMatch(/reset \d{2}:\d{2}$/)
+  })
+
   test('is green above 50%, amber between 20% and 50%, red below 20%', () => {
     const color = (remaining: number) =>
       toRateLimitViewModel({ limit: 5000, remaining, resetAt }).color

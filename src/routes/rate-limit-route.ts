@@ -20,8 +20,8 @@ export function toRateLimitViewModel(status: RateLimitStatus | null): RateLimitV
     minute: '2-digit',
   })
   return {
-    label: `API ${status.remaining.toLocaleString('en-US')}/${status.limit.toLocaleString('en-US')}`,
-    title: `GitHub API requests left. Resets ${resetTime}`,
+    label: `API ${status.remaining.toLocaleString('en-US')}/${status.limit.toLocaleString('en-US')} · reset ${resetTime}`,
+    title: `GitHub API requests left. Resets at ${resetTime}`,
     color,
   }
 }
