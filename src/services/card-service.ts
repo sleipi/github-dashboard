@@ -7,7 +7,12 @@ import type {
   SecurityAlert,
   SecurityCounts,
 } from '../db/types.ts'
-import type { GitHubClient, GitHubRepo, PendingDeployment } from '../github/github-client.ts'
+import {
+  type GitHubClient,
+  type GitHubRepo,
+  type PendingDeployment,
+  RateLimitError,
+} from '../github/github-client.ts'
 import { calculateSecurityCounts } from './security-service.ts'
 
 const MAX_CI_CHECKS = 3
@@ -86,20 +91,27 @@ export function createCardService(repos: Repos, client: GitHubClient): CardServi
     }
 
     if (githubPrs !== null && refreshNeeded.has('prs')) {
-      const prsWithCi: PullRequest[] = await Promise.all(
-        githubPrs.slice(0, MAX_CI_CHECKS).map(async (pr) => ({
-          repoFullName: fullName,
-          number: pr.number,
-          title: pr.title,
-          draft: pr.draft,
-          ciStatus: await client.getCiStatus(fullName, pr.headSha),
-          prUrl: pr.htmlUrl,
-          creator: pr.creator,
-          labels: pr.labels,
-          createdAt: new Date(pr.createdAt),
-          updatedAt: new Date(pr.updatedAt),
-        })),
-      )
+      let prsWithCi: PullRequest[]
+      try {
+        prsWithCi = await Promise.all(
+          githubPrs.slice(0, MAX_CI_CHECKS).map(async (pr) => ({
+            repoFullName: fullName,
+            number: pr.number,
+            title: pr.title,
+            draft: pr.draft,
+            ciStatus: await client.getCiStatus(fullName, pr.headSha),
+            prUrl: pr.htmlUrl,
+            creator: pr.creator,
+            labels: pr.labels,
+            createdAt: new Date(pr.createdAt),
+            updatedAt: new Date(pr.updatedAt),
+          })),
+        )
+      } catch (err) {
+        // Rate limit hit mid-way: keep what is cached instead of storing half-known CI states.
+        if (err instanceof RateLimitError && existing) return
+        throw err
+      }
       const prsRest: PullRequest[] = githubPrs.slice(MAX_CI_CHECKS).map((pr) => ({
         repoFullName: fullName,
         number: pr.number,

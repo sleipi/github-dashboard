@@ -857,4 +857,141 @@ describe('GitHubClient', () => {
     repos.close()
     cleanupTempDir(dir)
   })
+
+  describe('rate-limit savings', () => {
+    function setup() {
+      const { dir, dbPath } = createTempDbPath('gh-dash-client-')
+      const repos = createSqliteRepos(dbPath)
+      repos.auth.saveToken({ pat: 'ghp_test', username: 'alice', avatarUrl: '', expiresAt: null })
+      return {
+        repos,
+        cleanup: () => {
+          repos.close()
+          cleanupTempDir(dir)
+        },
+      }
+    }
+
+    test('sends If-None-Match and serves cached body on 304', async () => {
+      const { repos, cleanup } = setup()
+      const seen: Array<string | null> = []
+      const fetchFn = mock(async (_url: string, init?: RequestInit) => {
+        const inm = new Headers(init?.headers).get('If-None-Match')
+        seen.push(inm)
+        if (inm === '"v1"') return new Response(null, { status: 304 })
+        return new Response(
+          JSON.stringify([{ commit: { committer: { date: '2026-01-02T00:00:00Z' } } }]),
+          {
+            headers: { ETag: '"v1"' },
+          },
+        )
+      })
+      const client = createGitHubClient(repos.auth, fetchFn)
+
+      const first = await client.getLastCommitDate('alice/alpha')
+      const second = await client.getLastCommitDate('alice/alpha')
+
+      expect(seen).toEqual([null, '"v1"'])
+      expect(second).toEqual(first)
+      cleanup()
+    })
+
+    test('caches dependabot alerts via ETag too', async () => {
+      const { repos, cleanup } = setup()
+      const fetchFn = mock(async (_url: string, init?: RequestInit) => {
+        if (new Headers(init?.headers).get('If-None-Match') === '"d1"')
+          return new Response(null, { status: 304 })
+        return new Response(JSON.stringify([]), { headers: { ETag: '"d1"' } })
+      })
+      const client = createGitHubClient(repos.auth, fetchFn)
+      await client.getDependabotAlerts('alice/alpha')
+      expect(await client.getDependabotAlerts('alice/alpha')).toEqual([])
+      expect(fetchFn.mock.calls[1]?.[1]?.headers).toMatchObject({ 'If-None-Match': '"d1"' })
+      cleanup()
+    })
+
+    test('stops calling GitHub after the limit is exhausted, until reset', async () => {
+      const { repos, cleanup } = setup()
+      const resetAt = Math.floor(Date.now() / 1000) + 600
+      const fetchFn = mock(
+        async () =>
+          new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+            status: 403,
+            headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(resetAt) },
+          }),
+      )
+      const client = createGitHubClient(repos.auth, fetchFn)
+
+      await expect(client.getPrs('alice/alpha')).rejects.toThrow(/rate limit/i)
+      await expect(client.getPrs('alice/beta')).rejects.toThrow(/rate limit/i)
+      await expect(client.getLastCommitDate('alice/beta')).rejects.toThrow(/rate limit/i)
+
+      expect(fetchFn).toHaveBeenCalledTimes(1)
+      cleanup()
+    })
+
+    test('dependabot and deployments throw on rate limit instead of returning []', async () => {
+      const { repos, cleanup } = setup()
+      const fetchFn = mock(
+        async () =>
+          new Response('{}', {
+            status: 403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600),
+            },
+          }),
+      )
+      const client = createGitHubClient(repos.auth, fetchFn)
+      await expect(client.getDependabotAlerts('alice/alpha')).rejects.toThrow(/rate limit/i)
+      await expect(client.getPendingDeployments('alice/alpha')).rejects.toThrow(/rate limit/i)
+      cleanup()
+    })
+
+    test('getRateLimit is null before any request and reflects the last response headers', async () => {
+      const { repos, cleanup } = setup()
+      const fetchFn = mock(
+        async () =>
+          new Response('[]', {
+            headers: {
+              'x-ratelimit-limit': '5000',
+              'x-ratelimit-remaining': '4231',
+              'x-ratelimit-reset': '1794933570',
+            },
+          }),
+      )
+      const client = createGitHubClient(repos.auth, fetchFn)
+      expect(client.getRateLimit()).toBeNull()
+
+      await client.getPrs('alice/alpha')
+
+      expect(client.getRateLimit()).toEqual({
+        limit: 5000,
+        remaining: 4231,
+        resetAt: new Date(1794933570 * 1000),
+      })
+      cleanup()
+    })
+
+    test('resumes once the reset time has passed', async () => {
+      const { repos, cleanup } = setup()
+      let limited = true
+      const fetchFn = mock(async () =>
+        limited
+          ? new Response('{}', {
+              status: 403,
+              headers: {
+                'x-ratelimit-remaining': '0',
+                'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) - 1),
+              },
+            })
+          : new Response('[]'),
+      )
+      const client = createGitHubClient(repos.auth, fetchFn)
+      await expect(client.getPrs('alice/alpha')).rejects.toThrow()
+      limited = false
+      expect(await client.getPrs('alice/alpha')).toEqual([])
+      cleanup()
+    })
+  })
 })

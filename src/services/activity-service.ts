@@ -1,7 +1,7 @@
 // src/services/activity-service.ts
 import type { Repos } from '../db/repos.ts'
 import type { Activity, ActivityEventType, RefreshHint } from '../db/types.ts'
-import type { GitHubClient } from '../github/github-client.ts'
+import { type GitHubClient, RateLimitError } from '../github/github-client.ts'
 
 const DEP_TTL_MS = 5 * 60_000 // 5 minutes
 const PR_TTL_MS = 5 * 60_000 // 5 minutes — force PR+commit+CI refresh
@@ -48,28 +48,33 @@ export function createActivityService(repos: Repos, client: GitHubClient): Activ
       const needsEventsPoll =
         !meta?.eventsCachedAt || now - meta.eventsCachedAt.getTime() > pollIntervalMs
 
-      if (needsEventsPoll) {
-        const result = await client.getRepoEvents(fullName, meta?.eventsEtag ?? undefined)
-        if ('notModified' in result) {
-          repos.activity.upsertMeta(fullName, { eventsCachedAt: new Date() })
-        } else {
-          const newActivities = mapEvents(fullName, result.events, hints)
-          if (newActivities.length > 0) {
-            repos.activity.upsertActivities(fullName, newActivities)
+      // A reached rate limit must not take the card down: keep serving cached data.
+      try {
+        if (needsEventsPoll) {
+          const result = await client.getRepoEvents(fullName, meta?.eventsEtag ?? undefined)
+          if ('notModified' in result) {
+            repos.activity.upsertMeta(fullName, { eventsCachedAt: new Date() })
+          } else {
+            const newActivities = mapEvents(fullName, result.events, hints)
+            if (newActivities.length > 0) {
+              repos.activity.upsertActivities(fullName, newActivities)
+            }
+            repos.activity.upsertMeta(fullName, {
+              eventsEtag: result.etag,
+              eventsCachedAt: new Date(),
+              pollIntervalSecs: Math.max(60, result.pollIntervalSecs),
+            })
           }
-          repos.activity.upsertMeta(fullName, {
-            eventsEtag: result.etag,
-            eventsCachedAt: new Date(),
-            pollIntervalSecs: Math.max(60, result.pollIntervalSecs),
-          })
         }
-      }
 
-      // Dependabot poll (independent TTL)
-      const depCached = meta?.dependabotCachedAt?.getTime() ?? 0
-      if (now - depCached > DEP_TTL_MS) {
-        await syncDependabotAlerts(fullName, repos, client)
-        repos.activity.upsertMeta(fullName, { dependabotCachedAt: new Date() })
+        // Dependabot poll (independent TTL)
+        const depCached = meta?.dependabotCachedAt?.getTime() ?? 0
+        if (now - depCached > DEP_TTL_MS) {
+          await syncDependabotAlerts(fullName, repos, client)
+          repos.activity.upsertMeta(fullName, { dependabotCachedAt: new Date() })
+        }
+      } catch (err) {
+        if (!(err instanceof RateLimitError)) throw err
       }
 
       return {

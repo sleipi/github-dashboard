@@ -67,6 +67,21 @@ export type RepoEventsResult =
       readonly pollIntervalSecs: number
     }
 
+export type RateLimitStatus = {
+  readonly limit: number
+  readonly remaining: number
+  readonly resetAt: Date
+}
+
+export class RateLimitError extends Error {
+  constructor(readonly resumesAt: Date) {
+    super(`GitHub rate limit reached, resumes at ${resumesAt.toLocaleTimeString('en-GB')}`)
+    this.name = 'RateLimitError'
+  }
+}
+
+const MAX_CACHED_RESPONSES = 1000
+
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>
 
 export interface GitHubClient {
@@ -80,6 +95,7 @@ export interface GitHubClient {
   getRepoEvents(fullName: string, etag?: string): Promise<RepoEventsResult>
   getDependabotAlerts(fullName: string): Promise<GitHubDependabotAlert[]>
   getPendingDeployments(fullName: string): Promise<PendingDeployment[]>
+  getRateLimit(): RateLimitStatus | null
 }
 
 export function createGitHubClient(
@@ -95,18 +111,69 @@ export function createGitHubClient(
     }
   }
 
-  async function gfetch(path: string): Promise<unknown> {
-    const res = await fetchFn(`https://api.github.com${path}`, { headers: authHeaders() })
-    if (res.status === 401) throw new Error('Invalid token (401)')
-    if (res.status === 403) {
-      const j = (await res.json().catch(() => ({}))) as { message?: string }
-      throw new Error(j.message ?? 'Access denied (403)')
+  // ETag cache: GitHub answers a matching If-None-Match with 304, which does not count
+  // against the rate limit. Insertion order doubles as eviction order.
+  const etagCache = new Map<string, { etag: string; body: unknown }>()
+  let rateLimit: RateLimitStatus | null = null
+  let blockedUntilMs = 0
+
+  function rememberResponse(url: string, etag: string, body: unknown): void {
+    etagCache.delete(url)
+    etagCache.set(url, { etag, body })
+    if (etagCache.size > MAX_CACHED_RESPONSES) {
+      const oldest = etagCache.keys().next().value
+      if (oldest !== undefined) etagCache.delete(oldest)
     }
+  }
+
+  function guard(): void {
+    if (Date.now() < blockedUntilMs) throw new RateLimitError(new Date(blockedUntilMs))
+  }
+
+  function observe(res: Response): void {
+    const remaining = res.headers.get('x-ratelimit-remaining')
+    const reset = res.headers.get('x-ratelimit-reset')
+    if (remaining !== null && reset !== null) {
+      rateLimit = {
+        limit: Number(res.headers.get('x-ratelimit-limit')) || rateLimit?.limit || 5000,
+        remaining: Number(remaining),
+        resetAt: new Date(Number(reset) * 1000),
+      }
+      if (Number(remaining) === 0) blockedUntilMs = Number(reset) * 1000
+    }
+    const retryAfter = Number(res.headers.get('retry-after'))
+    if ((res.status === 403 || res.status === 429) && retryAfter > 0) {
+      blockedUntilMs = Date.now() + retryAfter * 1000
+    }
+  }
+
+  type Fetched = { readonly ok: boolean; readonly status: number; readonly body: unknown }
+
+  async function request(url: string): Promise<Fetched> {
+    guard()
+    const cached = etagCache.get(url)
+    const headers = authHeaders()
+    if (cached) headers['If-None-Match'] = cached.etag
+    const res = await fetchFn(url, { headers })
+    observe(res)
+    if (res.status === 304 && cached) return { ok: true, status: 200, body: cached.body }
     if (!res.ok) {
-      const j = (await res.json().catch(() => ({}))) as { message?: string }
-      throw new Error(j.message ?? `API error ${res.status}`)
+      guard()
+      return { ok: false, status: res.status, body: await res.json().catch(() => ({})) }
     }
-    return res.json()
+    const body = await res.json()
+    const etag = res.headers.get('ETag')
+    if (etag) rememberResponse(url, etag, body)
+    return { ok: true, status: res.status, body }
+  }
+
+  async function gfetch(path: string): Promise<unknown> {
+    const r = await request(`https://api.github.com${path}`)
+    if (r.ok) return r.body
+    const message = (r.body as { message?: string }).message
+    if (r.status === 401) throw new Error('Invalid token (401)')
+    if (r.status === 403) throw new Error(message ?? 'Access denied (403)')
+    throw new Error(message ?? `API error ${r.status}`)
   }
 
   return {
@@ -248,7 +315,8 @@ export function createGitHubClient(
         const failed = ['failure', 'timed_out', 'cancelled', 'action_required']
         if (runs.some((r) => r.conclusion && failed.includes(r.conclusion))) return 'failure'
         return 'success'
-      } catch {
+      } catch (err) {
+        if (err instanceof RateLimitError) throw err
         return 'unknown'
       }
     },
@@ -256,9 +324,12 @@ export function createGitHubClient(
     async getRepoEvents(fullName, etag) {
       const headers: Record<string, string> = { ...authHeaders() }
       if (etag) headers['If-None-Match'] = etag
+      guard()
       const res = await fetchFn(`https://api.github.com/repos/${fullName}/events`, { headers })
+      observe(res)
       if (res.status === 304) return { notModified: true }
       if (!res.ok) {
+        guard()
         const j = (await res.json().catch(() => ({}))) as { message?: string }
         throw new Error(j.message ?? `API error ${res.status}`)
       }
@@ -284,20 +355,13 @@ export function createGitHubClient(
     },
 
     async getDependabotAlerts(fullName) {
-      const token = authRepo.getToken()
-      if (!token) return []
+      if (!authRepo.getToken()) return []
       try {
-        const res = await fetchFn(
+        const r = await request(
           `https://api.github.com/repos/${fullName}/dependabot/alerts?state=open&per_page=100`,
-          {
-            headers: {
-              Authorization: `token ${token.pat}`,
-              Accept: 'application/vnd.github.v3+json',
-            },
-          },
         )
-        if (!res.ok) return []
-        const raw = (await res.json()) as Array<{
+        if (!r.ok) return []
+        const raw = r.body as Array<{
           number: number
           dependency: { package: { name: string; ecosystem: string } }
           security_advisory: {
@@ -318,26 +382,20 @@ export function createGitHubClient(
           htmlUrl: a.html_url,
           createdAt: a.created_at,
         }))
-      } catch {
+      } catch (err) {
+        if (err instanceof RateLimitError) throw err
         return []
       }
     },
 
     async getPendingDeployments(fullName) {
-      const token = authRepo.getToken()
-      if (!token) return []
+      if (!authRepo.getToken()) return []
       try {
-        const res = await fetchFn(
+        const r = await request(
           `https://api.github.com/repos/${fullName}/actions/runs?status=waiting&per_page=20`,
-          {
-            headers: {
-              Authorization: `token ${token.pat}`,
-              Accept: 'application/vnd.github.v3+json',
-            },
-          },
         )
-        if (!res.ok) return []
-        const data = (await res.json()) as {
+        if (!r.ok) return []
+        const data = r.body as {
           workflow_runs: Array<{
             id: number
             name: string | null
@@ -348,17 +406,22 @@ export function createGitHubClient(
             created_at: string
           }>
         }
-        return data.workflow_runs.map((r) => ({
-          runId: r.id,
-          name: r.name ?? 'workflow',
-          htmlUrl: r.html_url,
-          actor: r.actor?.login ?? 'unknown',
-          headBranch: r.head_branch,
-          waitingSince: r.run_started_at ?? r.created_at,
+        return data.workflow_runs.map((run) => ({
+          runId: run.id,
+          name: run.name ?? 'workflow',
+          htmlUrl: run.html_url,
+          actor: run.actor?.login ?? 'unknown',
+          headBranch: run.head_branch,
+          waitingSince: run.run_started_at ?? run.created_at,
         }))
-      } catch {
+      } catch (err) {
+        if (err instanceof RateLimitError) throw err
         return []
       }
+    },
+
+    getRateLimit() {
+      return rateLimit
     },
   }
 }
