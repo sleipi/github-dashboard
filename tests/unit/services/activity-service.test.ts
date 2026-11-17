@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
-import type { GitHubClient } from '../../../src/github/github-client.ts'
+import { type GitHubClient, RateLimitError } from '../../../src/github/github-client.ts'
 import { createActivityService } from '../../../src/services/activity-service.ts'
 import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
 
@@ -16,6 +16,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getRepoEvents: mock(async () => ({ notModified: true as const })),
     getDependabotAlerts: mock(async () => []),
     getPendingDeployments: mock(async () => []),
+    getRateLimit: () => null,
     ...overrides,
   }
 }
@@ -675,5 +676,22 @@ describe('ActivityService', () => {
 
     repos.close()
     cleanupTempDir(dir)
+  })
+
+  test('sync keeps cached activities and does not throw when GitHub rate limit is reached', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-act-svc-')
+    cleanup.push(dir)
+    const repos = createSqliteRepos(dbPath)
+    const limited = mock(async () => {
+      throw new RateLimitError(new Date(Date.now() + 60_000))
+    })
+    const service = createActivityService(
+      repos,
+      makeClient({ getRepoEvents: limited, getDependabotAlerts: limited }),
+    )
+
+    const result = await service.sync('alice/alpha')
+
+    expect(result.activities).toEqual([])
   })
 })

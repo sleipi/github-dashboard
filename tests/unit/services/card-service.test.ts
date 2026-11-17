@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { createSqliteRepos } from '../../../src/db/sqlite-repository.ts'
 import type { PullRequest, SecurityAlert } from '../../../src/db/types.ts'
-import type { GitHubClient } from '../../../src/github/github-client.ts'
+import { type GitHubClient, RateLimitError } from '../../../src/github/github-client.ts'
 import { computeMostRecentActivity, createCardService } from '../../../src/services/card-service.ts'
 import { cleanupTempDir, createTempDbPath } from '../helpers/temp-db.ts'
 
@@ -48,6 +48,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getRepoEvents: mock(async () => ({ notModified: true as const })),
     getDependabotAlerts: mock(async () => []),
     getPendingDeployments: mock(async () => []),
+    getRateLimit: () => null,
     ...overrides,
   }
 }
@@ -409,6 +410,44 @@ describe('CardService', () => {
 
     expect(result.prs).toHaveLength(1)
     expect(result.prs[0]?.title).toBe('cached pr')
+
+    repos.close()
+    cleanupTempDir(dir)
+  })
+
+  test('getCard keeps cached PR data when the rate limit is hit while fetching CI status', async () => {
+    const { dir, dbPath } = createTempDbPath('gh-dash-svc-')
+    const repos = createSqliteRepos(dbPath)
+    repos.pullRequests.upsertPrs('alice/alpha', [
+      makePr({ title: 'cached pr', ciStatus: 'success' }),
+    ])
+    repos.pullRequests.upsertCache('alice/alpha', {
+      lastCommitAt: null,
+      prTotal: 1,
+      dependabotCount: 0,
+    })
+    const getPrs = mock(async () => [
+      {
+        number: 1,
+        title: 'fresh pr',
+        draft: false,
+        headSha: 'abc',
+        htmlUrl: 'https://github.com/alice/alpha/pull/1',
+        creator: 'alice',
+        labels: [],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+      },
+    ])
+    const getCiStatus = mock(async () => {
+      throw new RateLimitError(new Date(Date.now() + 60_000))
+    })
+    const service = createCardService(repos, makeClient({ getPrs, getCiStatus }))
+
+    const result = await service.getCard('alice/alpha', new Set(['prs']))
+
+    expect(result.prs[0]?.title).toBe('cached pr')
+    expect(result.prs[0]?.ciStatus).toBe('success')
 
     repos.close()
     cleanupTempDir(dir)

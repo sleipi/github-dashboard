@@ -30,6 +30,7 @@ function makeClient(overrides: Partial<GitHubClient> = {}): GitHubClient {
     getRepoEvents: mock(async () => ({ notModified: true as const })),
     getDependabotAlerts: mock(async () => []),
     getPendingDeployments: mock(async () => []),
+    getRateLimit: () => null,
     ...overrides,
   }
 }

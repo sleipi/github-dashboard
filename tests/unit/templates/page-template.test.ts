@@ -44,6 +44,12 @@ describe('renderSetupPage', () => {
     expect(html).toContain('&lt;img')
   })
 
+  test('loads the rate-limit indicator into the header', () => {
+    const html = dashboard('', 'alice', '')
+    expect(html).toContain('id="rate-limit"')
+    expect(html).toContain('hx-get="/api/rate-limit"')
+  })
+
   test('includes a favicon link', () => {
     const html = renderSetupPage()
     expect(html).toContain('rel="icon"')
@@ -83,6 +89,11 @@ describe('renderDashboard', () => {
     const html = dashboard('', 'alice', '')
     expect(html).toContain('hx-get="/api/cards"')
     expect(html).toContain('every 10s')
+  })
+
+  test('pauses auto-refresh while the tab is hidden', () => {
+    const html = dashboard('', 'alice', '')
+    expect(html).toContain('every 10s [!document.hidden]')
   })
 
   test('includes a favicon link', () => {
